@@ -96,7 +96,7 @@ def _read_legs_totals(output_dir: Path, sample_fraction: float) -> dict[str, flo
     vht = 0.0
     vmt = 0.0
     with gzip.open(legs_path, "rt", newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, delimiter=";")  # MATSim CSVs use ';'
         for row in reader:
             trav_time = row.get("trav_time")
             distance = row.get("distance")
