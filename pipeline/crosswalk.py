@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from operator import index as operator_index
+from pathlib import Path
 from random import Random
 from typing import Any
 
@@ -100,6 +101,30 @@ def _coerce_links(network: Any) -> list[LinkRecord]:
         return links
 
     raise TypeError("network must be a list[LinkRecord] or a GeoDataFrame-like link table")
+
+
+def load_links_from_gpkg(path: str | Path) -> list[LinkRecord]:
+    """Load MATSim link records from an S1 network_links GeoPackage."""
+    import geopandas as gpd
+
+    links_gdf = gpd.read_file(path)
+    required_columns = {"link_id", "from_node", "to_node", "geometry"}
+    missing = required_columns.difference(links_gdf.columns)
+    if missing:
+        raise ValueError(f"Missing required link columns in {path}: {sorted(missing)}")
+
+    links: list[LinkRecord] = []
+    for _, row in links_gdf.iterrows():
+        links.append(
+            LinkRecord(
+                link_id=str(row["link_id"]),
+                from_node=str(row["from_node"]),
+                to_node=str(row["to_node"]),
+                geometry=row.geometry,
+                is_connector=bool(row.get("is_connector", False)),
+            )
+        )
+    return links
 
 
 def build_taz_link_crosswalk(taz_gdf: Any, network: Any) -> TazLinkCrosswalk:

@@ -7,8 +7,12 @@ boundary:
 
 sources:
   osm:
+    # Prefer the BBBike "Chicago" city extract via pyrosm (~95 MB, reliable) over
+    # the ~350 MB Geofabrik state file. Falls back to `url` if pyrosm_dataset unset.
+    pyrosm_dataset: "Chicago"
     geofabrik_region: "us/illinois"
     url: "https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"
+    network_buffer_m: 1500
     year: 2026 # PLACEHOLDER
   lodes:
     url_template: "https://lehd.ces.census.gov/data/lodes/LODES8/il/od/il_od_main_JT00_{year}.csv.gz"

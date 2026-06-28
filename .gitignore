@@ -29,8 +29,15 @@ data/interim/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 scenarios/*/output/
+# Generated MATSim inputs (regenerable from the pipeline)
+scenarios/*/network.xml.gz
+scenarios/*/plans.xml.gz
+scenarios/*/transitSchedule.xml.gz
+scenarios/*/transitVehicles.xml.gz
+scenarios/*/counts.xml
 
 # Local files
 .idea/
 .vscode/
+.claude/
 *.log
