@@ -89,6 +89,13 @@
         <param name="activityType" value="visit" />
         <param name="typicalDuration" value="02:00:00" />
       </parameterset>
+      <!-- Cordon boundary crossing for through/in-out trips; not a real activity,
+           so exclude from scoring to avoid biasing. -->
+      <parameterset type="activityParams">
+        <param name="activityType" value="gateway" />
+        <param name="typicalDuration" value="12:00:00" />
+        <param name="scoringThisActivityAtAll" value="false" />
+      </parameterset>
     </parameterset>
   </module>
 

@@ -11,6 +11,7 @@ __all__ = [
     "s1_network",
     "s2_demand",
     "cmap_demand",
+    "cmap_cordon_demand",
     "s3_transit",
     "s4_calibrate",
     "s5_interventions",

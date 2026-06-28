@@ -15,6 +15,7 @@ PIPELINE_MODULES = [
     "pipeline.s1_network",
     "pipeline.s2_demand",
     "pipeline.cmap_demand",
+    "pipeline.cmap_cordon_demand",
     "pipeline.s3_transit",
     "pipeline.s4_calibrate",
     "pipeline.s5_interventions",
@@ -30,4 +31,4 @@ def test_pipeline_modules_import() -> None:
 def test_cli_stages_registered() -> None:
     import cli
 
-    assert list(cli.STAGES) == ["s0", "s1", "s2", "s2c", "s3", "s4", "s5", "s6"]
+    assert list(cli.STAGES) == ["s0", "s1", "s2", "s2c", "s2d", "s3", "s4", "s5", "s6"]

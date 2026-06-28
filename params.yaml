@@ -41,6 +41,8 @@ sources:
         PM1: [50400, 57600]
         PM2: [57600, 64800]
         PM3: [64800, 72000]
+    cordon:
+      gateway_activity_type: "gateway"
     trip_tables:
       dataset: "c24q4"
       # c24q4 base-year (analysis year ~2019) regional model bundle, ~2.8 GB.

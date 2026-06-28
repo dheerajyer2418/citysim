@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from pipeline import (
+    cmap_cordon_demand,
     cmap_demand,
     s0_boundary,
     s1_network,
@@ -32,6 +33,7 @@ STAGES: dict[str, Stage] = {
     "s1": Stage("s1", "OSM network clipping and MATSim network export", s1_network.run),
     "s2": Stage("s2", "Demand synthesis and MATSim plans export", s2_demand.run),
     "s2c": Stage("s2c", "CMAP all-purpose trip-roster demand export", cmap_demand.run),
+    "s2d": Stage("s2d", "CMAP cordon demand and final plans export", cmap_cordon_demand.run),
     "s3": Stage("s3", "GTFS transit schedule and vehicle export", s3_transit.run),
     "s4": Stage("s4", "Counts calibration and GEH validation", s4_calibrate.run),
     "s5": Stage("s5", "Intervention edit-layer generation", s5_interventions.run),
