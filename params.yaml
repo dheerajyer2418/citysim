@@ -15,13 +15,23 @@ sources:
     network_buffer_m: 1500
     year: 2026 # PLACEHOLDER
   lodes:
+    # LEHD LODES8, Illinois, origin-destination "main" (home & work both in IL),
+    # JT00 = all jobs. ~30 MB. block-level w_geocode/h_geocode, S000 = total jobs.
     url_template: "https://lehd.ces.census.gov/data/lodes/LODES8/il/od/il_od_main_JT00_{year}.csv.gz"
-    year: 2022 # PLACEHOLDER
+    year: 2022
+  census:
+    # 2020 Census Blocks via TIGERweb REST (layer 10). Fetch only our bbox as
+    # GeoJSON instead of the 306 MB statewide TIGER file. GEOID = 15-digit block,
+    # matches LODES geocodes; includes CENTLON/CENTLAT + POP100/HU100.
+    blocks_query_url: "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/10/query"
   cmap:
     trip_tables:
       dataset: "c24q4"
-      url: "https://example.invalid/cmap/c24q4/trip_tables.zip"
-      year: 2024 # PLACEHOLDER
+      # c24q4 base-year (analysis year ~2019) regional model bundle, ~2.8 GB.
+      # Contains zone17 distributed trip-table CSV matrices (all purposes) + TOD
+      # factors + trip roster. Downloaded in background; parsed in a later S2 pass.
+      url: "https://stargishub01.blob.core.windows.net/cmap-arcgis-hub01-blob/Data/Conformity%20Analysis/TBM%20Inputs%20and%20Outputs/c24q4/c24q4_100.zip"
+      year: 2019
     taz_polygons:
       # CMAP "Trip Generation Zones - Zones (2017)" = zones17 TAZ geography.
       # ArcGIS Hub GeoJSON export (EPSG:4326); TAZ id field is "zone17". 3632 zones.

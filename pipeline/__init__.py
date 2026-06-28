@@ -4,6 +4,7 @@ __all__ = [
     "config",
     "crosswalk",
     "download",
+    "io_arcgis",
     "io_socrata",
     "s0_boundary",
     "s1_network",
