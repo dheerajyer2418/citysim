@@ -235,10 +235,11 @@ def _buffered_boundary_bounds_4326(boundary_path: Path, projected_crs: str, buff
     if not geometries:
         raise ValueError(f"No boundary geometries found in {boundary_path}")
 
+    # The boundary gpkg is already in the projected CRS (EPSG:26971), so buffer
+    # directly in meters and only transform the result to WGS84 for the bbox.
     boundary = unary_union(geometries)
-    to_projected = Transformer.from_crs("EPSG:4326", projected_crs, always_xy=True).transform
     to_wgs84 = Transformer.from_crs(projected_crs, "EPSG:4326", always_xy=True).transform
-    return transform(to_wgs84, transform(to_projected, boundary).buffer(buffer_m)).bounds
+    return transform(to_wgs84, boundary.buffer(buffer_m)).bounds
 
 
 def _fetch_adt_records(cfg: Any, bounds: tuple[float, float, float, float]) -> list[dict[str, Any]]:
