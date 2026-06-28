@@ -1,0 +1,61 @@
+crs: "EPSG:26971"
+
+boundary:
+  community_area_id: 22
+  name: "Logan Square"
+  buffer_m: 1500
+
+sources:
+  osm:
+    geofabrik_region: "us/illinois"
+    url: "https://download.geofabrik.de/north-america/us/illinois-latest.osm.pbf"
+    year: 2026 # PLACEHOLDER
+  lodes:
+    url_template: "https://lehd.ces.census.gov/data/lodes/LODES8/il/od/il_od_main_JT00_{year}.csv.gz"
+    year: 2022 # PLACEHOLDER
+  cmap:
+    trip_tables:
+      dataset: "c24q4"
+      url: "https://example.invalid/cmap/c24q4/trip_tables.zip"
+      year: 2024 # PLACEHOLDER
+    taz_polygons:
+      url: "https://example.invalid/cmap/c24q4/taz_polygons.zip"
+      year: 2024 # PLACEHOLDER
+    timau_validation:
+      url: "https://example.invalid/cmap/c24q4/timau_counts.csv"
+      year: 2024 # PLACEHOLDER
+  gtfs:
+    cta_url: "https://example.invalid/gtfs/cta.zip"
+    metra_url: "https://example.invalid/gtfs/metra.zip"
+    pace_url: "https://example.invalid/gtfs/pace.zip"
+    year: 2026 # PLACEHOLDER
+  socrata:
+    domain: "data.cityofchicago.org"
+    potholes_311:
+      dataset_id: "7as2-ds3y"
+      year: 2026 # PLACEHOLDER
+    adt_counts:
+      dataset_id: "PLACEHOLDER_ADT_COUNTS"
+      year: 2026 # PLACEHOLDER
+    tnp_trips:
+      dataset_id: "PLACEHOLDER_TNP_TRIPS"
+      year: 2026 # PLACEHOLDER
+    crashes:
+      dataset_id: "PLACEHOLDER_CRASHES"
+      year: 2026 # PLACEHOLDER
+
+scenario:
+  sample_fraction: 0.1
+  iterations: 50
+
+fhwa_coefficients:
+  value_of_time_usd_per_hr: 21.50 # PLACEHOLDER
+  emissions_usd_per_ton:
+    co2: 51.00 # PLACEHOLDER
+    nox: 15000.00 # PLACEHOLDER
+    pm25: 420000.00 # PLACEHOLDER
+  crash_cost_usd:
+    fatal: 12500000.00 # PLACEHOLDER
+    injury: 220000.00 # PLACEHOLDER
+    pdo: 12800.00 # PLACEHOLDER
+  vehicle_damage_usd_per_vmt: 0.07 # PLACEHOLDER

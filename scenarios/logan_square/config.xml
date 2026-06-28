@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE config SYSTEM "http://www.matsim.org/files/dtd/config_v2.dtd">
+<config>
+  <module name="global">
+    <param name="coordinateSystem" value="EPSG:26971" />
+  </module>
+  <module name="network">
+    <param name="inputNetworkFile" value="network.xml.gz" />
+  </module>
+  <module name="plans">
+    <param name="inputPlansFile" value="plans.xml.gz" />
+  </module>
+  <module name="controler">
+    <param name="outputDirectory" value="output" />
+    <param name="firstIteration" value="0" />
+    <param name="lastIteration" value="50" />
+    <param name="overwriteFiles" value="deleteDirectoryIfExists" />
+  </module>
+  <module name="qsim">
+    <param name="startTime" value="00:00:00" />
+    <param name="endTime" value="30:00:00" />
+  </module>
+</config>

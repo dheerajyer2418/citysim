@@ -1,0 +1,37 @@
+plugins {
+    id "java"
+    id "application"
+}
+
+group = "citysim"
+version = "0.1.0-SNAPSHOT"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    implementation "org.matsim:matsim:16.0"
+    implementation "org.matsim.contrib:cadytsIntegration:16.0"
+    implementation "org.matsim.contrib:pt2matsim:24.12"
+}
+
+application {
+    mainClass = "citysim.RunCitySim"
+}
+
+tasks.register("runCitySim", JavaExec) {
+    group = "application"
+    description = "Run the Logan Square MATSim scenario."
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "citysim.RunCitySim"
+}
+
+tasks.register("calibrateWithCadyts", JavaExec) {
+    group = "application"
+    description = "Run the Cadyts calibration scaffold."
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "citysim.CalibrateWithCadyts"
+}

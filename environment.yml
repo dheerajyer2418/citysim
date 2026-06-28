@@ -1,0 +1,17 @@
+name: citysim
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - geopandas
+  - pyrosm
+  - osmium-tool
+  - pandas
+  - sodapy
+  - shapely
+  - pyproj
+  - lxml
+  - matsim-tools
+  - requests
+  - pyyaml
+  - pytest
