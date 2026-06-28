@@ -300,7 +300,7 @@ def build_matsim_network_from_gdfs(nodes_gdf, edges_gdf, crs: str) -> tuple[list
                 )
             )
 
-    return _keep_largest_weak_component(nodes_by_id, links, nx)
+    return _keep_largest_strong_component(nodes_by_id, links, nx)
 
 
 def _unique_link_id(base_id: str, used_link_ids: set[str]) -> str:
@@ -313,15 +313,19 @@ def _unique_link_id(base_id: str, used_link_ids: set[str]) -> str:
     return candidate
 
 
-def _keep_largest_weak_component(
+def _keep_largest_strong_component(
     nodes_by_id: dict[str, MatsimNode],
     links: list[MatsimLink],
     nx_module: Any,
 ) -> tuple[list[MatsimNode], list[MatsimLink]]:
+    # MATSim car routing requires a STRONGLY-connected network: every node must be
+    # reachable from every other following link directions. A weakly-connected
+    # filter leaves one-way traps that crash routing ("No route found ... by car"),
+    # so keep the largest strongly-connected component (same as NetworkCleaner).
     graph = nx_module.DiGraph()
     graph.add_nodes_from(nodes_by_id)
     graph.add_edges_from((link.from_node, link.to_node) for link in links)
-    components = list(nx_module.weakly_connected_components(graph))
+    components = list(nx_module.strongly_connected_components(graph))
     if not components:
         return [], []
     largest = max(components, key=len)

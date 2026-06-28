@@ -8,8 +8,24 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenCentral()
-        maven { url = uri("https://repo.osgeo.org/repository/release/") }
+        mavenCentral {
+            // Central ships the jai_core POM but not the JAR; Gradle then binds the
+            // artifact to Central and never falls through. Exclude javax.media so
+            // OSGeo (which has both POM and JAR) becomes the resolution source.
+            content { excludeGroup("javax.media") }
+        }
+        // MATSim core + contribs (not all on Maven Central)
+        maven { url = uri("https://repo.matsim.org/repository/matsim/") }
+        // GeoTools (transitive dependency of MATSim). jai_core lives only here and
+        // Maven Central has its POM but not the JAR, so allow direct artifact lookup.
+        maven {
+            url = uri("https://repo.osgeo.org/repository/release/")
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

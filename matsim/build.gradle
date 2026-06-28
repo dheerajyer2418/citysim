@@ -12,10 +12,15 @@ java {
     }
 }
 
+// Repositories are declared in settings.gradle (dependencyResolutionManagement,
+// FAIL_ON_PROJECT_REPOS), so none are declared here.
+
 dependencies {
-    implementation "org.matsim:matsim:16.0"
-    implementation "org.matsim.contrib:cadytsIntegration:16.0"
-    implementation "org.matsim.contrib:pt2matsim:24.12"
+    // MATSim 2024.0 is the latest release built for Java 17 (2025.0+ require newer
+    // JDKs). Pinned here so the local JDK 17 toolchain + Gradle 8.10.2 compile cleanly.
+    implementation "org.matsim:matsim:2024.0"
+    // cadytsIntegration is re-added at S4 (calibration); pt2matsim is unused
+    // because the network/transit conversion is done in Python.
 }
 
 application {
@@ -27,11 +32,4 @@ tasks.register("runCitySim", JavaExec) {
     description = "Run the Logan Square MATSim scenario."
     classpath = sourceSets.main.runtimeClasspath
     mainClass = "citysim.RunCitySim"
-}
-
-tasks.register("calibrateWithCadyts", JavaExec) {
-    group = "application"
-    description = "Run the Cadyts calibration scaffold."
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = "citysim.CalibrateWithCadyts"
 }

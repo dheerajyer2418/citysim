@@ -41,3 +41,6 @@ scenarios/*/counts.xml
 .vscode/
 .claude/
 *.log
+
+# Local portable toolchain (JDK, etc.) — not committed
+tools/
