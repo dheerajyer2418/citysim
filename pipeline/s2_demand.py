@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import gzip
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from lxml import etree
-
 from pipeline.crosswalk import build_taz_link_crosswalk, load_links_from_gpkg, sample_activity_coord
 from pipeline.download import download_to_raw
 from pipeline.io_arcgis import fetch_arcgis_geojson
+from pipeline.plans_io import stochastic_count, write_population
 
 
 PLANS_OUTPUT = "plans.xml.gz"
@@ -30,11 +28,9 @@ class AgentPlan:
 
 
 def _format_time(seconds: float) -> str:
-    seconds_int = max(0, int(round(seconds)))
-    hours = seconds_int // 3600
-    minutes = (seconds_int % 3600) // 60
-    secs = seconds_int % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    from pipeline.plans_io import format_time
+
+    return format_time(seconds)
 
 
 def sample_departure_times(rng) -> tuple[float, float]:
@@ -134,7 +130,7 @@ def generate_agent_plans(od_by_taz, sample_fraction: float, rng_seed: int = RNG_
     person_number = 0
     for _, row in od_by_taz.iterrows():
         jobs = int(row["jobs"])
-        count = int(round(jobs * sample_fraction))
+        count = stochastic_count(jobs * sample_fraction, rng)
         for _ in range(count):
             home_x, home_y = sample_activity_coord(str(row["home_taz"]))
             work_x, work_y = sample_activity_coord(str(row["work_taz"]))
@@ -156,46 +152,18 @@ def generate_agent_plans(od_by_taz, sample_fraction: float, rng_seed: int = RNG_
 
 def write_plans_xml(agents: Iterable[AgentPlan], output_path: str | Path) -> Path:
     """Write gzipped MATSim population_v6 XML."""
-    output = Path(output_path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    with gzip.open(output, "wb") as handle:
-        handle.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
-        handle.write(b'<!DOCTYPE population SYSTEM "http://www.matsim.org/files/dtd/population_v6.dtd">\n')
-        with etree.xmlfile(handle, encoding="UTF-8") as xf:
-            with xf.element("population"):
-                for agent in agents:
-                    with xf.element("person", id=agent.person_id):
-                        with xf.element("plan", selected="yes"):
-                            xf.write(
-                                etree.Element(
-                                    "activity",
-                                    type="home",
-                                    x=f"{agent.home_x:.3f}",
-                                    y=f"{agent.home_y:.3f}",
-                                    end_time=_format_time(agent.home_end_time),
-                                )
-                            )
-                            xf.write(etree.Element("leg", mode="car"))
-                            xf.write(
-                                etree.Element(
-                                    "activity",
-                                    type="work",
-                                    x=f"{agent.work_x:.3f}",
-                                    y=f"{agent.work_y:.3f}",
-                                    end_time=_format_time(agent.work_end_time),
-                                )
-                            )
-                            xf.write(etree.Element("leg", mode="car"))
-                            xf.write(
-                                etree.Element(
-                                    "activity",
-                                    type="home",
-                                    x=f"{agent.home_x:.3f}",
-                                    y=f"{agent.home_y:.3f}",
-                                )
-                            )
-    return output
+    persons = (
+        (
+            agent.person_id,
+            [
+                ("home", agent.home_x, agent.home_y, agent.home_end_time),
+                ("work", agent.work_x, agent.work_y, agent.work_end_time),
+                ("home", agent.home_x, agent.home_y, None),
+            ],
+        )
+        for agent in agents
+    )
+    return write_population(persons, output_path)
 
 
 def run(cfg) -> None:
