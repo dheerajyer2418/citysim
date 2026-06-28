@@ -73,8 +73,9 @@ sources:
       dataset_id: "7as2-ds3y"
       year: 2026 # PLACEHOLDER
     adt_counts:
-      dataset_id: "PLACEHOLDER_ADT_COUNTS"
-      year: 2026 # PLACEHOLDER
+      # Average Daily Traffic Counts (directional point counts; roadname,
+      # direction NB/SB/EB/WB, midpointlat/lon, vehiclecount). Used for validation.
+      dataset_id: "gc7y-n4xa"
     tnp_trips:
       dataset_id: "PLACEHOLDER_TNP_TRIPS"
       year: 2026 # PLACEHOLDER
