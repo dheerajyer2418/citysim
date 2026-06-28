@@ -1,0 +1,13 @@
+# Python 3.11 pip-installable dependencies mirrored from environment.yml.
+# Optional external CLI not installed by pip: osmium-tool.
+geopandas
+pyrosm
+pandas
+sodapy
+shapely
+pyproj
+lxml
+matsim-tools
+requests
+pyyaml
+pytest

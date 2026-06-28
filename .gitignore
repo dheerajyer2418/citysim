@@ -20,6 +20,7 @@ build/
 out/
 *.class
 *.jar
+!matsim/gradle/wrapper/gradle-wrapper.jar
 
 # Project data products
 data/raw/*
