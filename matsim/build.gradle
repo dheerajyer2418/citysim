@@ -19,7 +19,9 @@ dependencies {
     // MATSim 2024.0 is the latest release built for Java 17 (2025.0+ require newer
     // JDKs). Pinned here so the local JDK 17 toolchain + Gradle 8.10.2 compile cleanly.
     implementation "org.matsim:matsim:2024.0"
-    // cadytsIntegration is re-added at S4 (calibration); pt2matsim is unused
+    // OTFVis: replay/visualize the simulation (org.matsim.contrib.otfvis.OTFVis).
+    implementation "org.matsim.contrib:otfvis:2024.0"
+    // cadytsIntegration is unavailable for MATSim 2024.0; pt2matsim is unused
     // because the network/transit conversion is done in Python.
 }
 

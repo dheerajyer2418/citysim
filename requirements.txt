@@ -13,3 +13,5 @@ pyyaml
 pytest
 networkx
 zipfile-deflate64
+matplotlib
+mapclassify

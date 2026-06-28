@@ -26,6 +26,8 @@ dependencyResolutionManagement {
             }
         }
         maven { url = uri("https://jitpack.io") }
+        // JOGL/JOGAMP OpenGL libs for OTFVis (gluegen-rt, jogl-all) — only here.
+        maven { url = uri("https://jogamp.org/deployment/maven/") }
     }
 }
 

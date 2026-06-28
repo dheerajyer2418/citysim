@@ -98,3 +98,16 @@ fhwa_coefficients:
     injury: 220000.00 # PLACEHOLDER
     pdo: 12800.00 # PLACEHOLDER
   vehicle_damage_usd_per_vmt: 0.07 # PLACEHOLDER
+
+interventions:
+  pothole:
+    # Each pothole on a link slows it; freespeed *= (1 - min(max_penalty,
+    # speed_penalty_per_pothole * n_potholes)). Fixing restores full freespeed.
+    speed_penalty_per_pothole: 0.05
+    max_penalty: 0.50
+    repair_cost_usd_per_pothole: 200.0 # PLACEHOLDER (Chicago CDOT order-of-magnitude)
+    # extra vehicle damage per VMT driven over a pothole-degraded link (on top of
+    # the baseline vehicle_damage_usd_per_vmt), avoided once fixed.
+    extra_damage_usd_per_vmt: 0.15 # PLACEHOLDER
+    analysis_period_years: 1
+    discount_rate: 0.03

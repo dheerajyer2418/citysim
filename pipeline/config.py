@@ -40,6 +40,7 @@ class CitySimConfig:
     sources: dict[str, Any]
     scenario: ScenarioConfig
     fhwa_coefficients: FhwaCoefficients
+    interventions: dict[str, Any]
 
     @property
     def data_raw(self) -> Path:
@@ -94,4 +95,5 @@ def load_config(path: str | Path = DEFAULT_PARAMS_PATH) -> CitySimConfig:
             crash_cost_usd=dict(fhwa["crash_cost_usd"]),
             vehicle_damage_usd_per_vmt=float(fhwa["vehicle_damage_usd_per_vmt"]),
         ),
+        interventions=dict(data.get("interventions", {})),
     )
