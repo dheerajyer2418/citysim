@@ -19,8 +19,11 @@ sources:
       url: "https://example.invalid/cmap/c24q4/trip_tables.zip"
       year: 2024 # PLACEHOLDER
     taz_polygons:
-      url: "https://example.invalid/cmap/c24q4/taz_polygons.zip"
-      year: 2024 # PLACEHOLDER
+      # CMAP "Trip Generation Zones - Zones (2017)" = zones17 TAZ geography.
+      # ArcGIS Hub GeoJSON export (EPSG:4326); TAZ id field is "zone17". 3632 zones.
+      url: "https://datahub.cmap.illinois.gov/api/download/v1/items/901627cb9e3149ff8f67663998f0602c/geojson?layers=0"
+      format: "geojson"
+      year: 2017
     timau_validation:
       url: "https://example.invalid/cmap/c24q4/timau_counts.csv"
       year: 2024 # PLACEHOLDER
@@ -31,6 +34,9 @@ sources:
     year: 2026 # PLACEHOLDER
   socrata:
     domain: "data.cityofchicago.org"
+    community_areas:
+      # Boundaries - Community Areas (current); GeoJSON via SODA. Logan Square = area_numbe 22.
+      dataset_id: "igwz-8jzy"
     potholes_311:
       dataset_id: "7as2-ds3y"
       year: 2026 # PLACEHOLDER
