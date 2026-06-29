@@ -32,13 +32,15 @@
          kept higher because strict sampled storage can still over-constrain
          shorter urban links. -->
     <param name="flowCapacityFactor" value="0.1" />
-    <param name="storageCapacityFactor" value="0.5" />
+    <!-- storage is NOT scaled to the 10% sample: full storage lets links hold
+         realistic queues so short links don't seed spurious circular deadlocks
+         (network mean V/C is only ~0.3 — gridlock was an artifact, not demand). -->
+    <param name="storageCapacityFactor" value="1.0" />
     <param name="mainMode" value="car" />
     <param name="snapshotStyle" value="queue" />
-    <!-- false (MATSim-recommended): stuck vehicles are forced onto the next link
-         instead of deleted, so trips complete and delay is reflected in time. -->
-    <param name="removeStuckVehicles" value="false" />
-    <param name="stuckTime" value="60.0" />
+    <!-- deadlock-breaker for any residual circular queue lock -->
+    <param name="removeStuckVehicles" value="true" />
+    <param name="stuckTime" value="30.0" />
   </module>
 
   <module name="scoring">
