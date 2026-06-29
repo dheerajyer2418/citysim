@@ -1,79 +1,136 @@
-# CitySim
+# CitySim — Logan Square Traffic Cost-Benefit Simulator
 
-CitySim is a greenfield traffic cost-benefit simulator scaffold for a Logan Square, Chicago MATSim scenario. The project is intentionally stubbed: it defines the pipeline structure, configuration, command-line entry points, and Java MATSim shell without fetching or processing real data.
+CitySim is an **agent-based traffic simulation of Logan Square, Chicago**, built
+entirely from public data, used to answer questions like:
 
-## Layout
+> *"If we fix the potholes (or add a bike lane), how much travel time and vehicle
+> damage does it save — and is that worth the cost?"*
 
-- `params.yaml` centralizes scenario, source, CRS, and monetization placeholders.
-- `pipeline/` contains Python stages `s0` through `s6`.
-- `matsim/` contains a Gradle Java project for MATSim runs.
-- `scenarios/logan_square/` contains placeholder MATSim config wiring.
-- `data/raw`, `data/interim`, and `data/processed` are local working directories.
+It produces a **dollar benefit-cost ratio (BCR)** for an infrastructure
+intervention, and a **live 3-D web visualization** of the simulated traffic.
 
-## Toolchain / Setup
+![intervention footprint](scenarios/logan_square/output/pothole_map.png)
 
-Use the local Python 3.11 virtual environment. Python 3.14 is intentionally avoided because Windows geospatial wheels for packages such as GeoPandas, Pyrosm, and Fiona are less reliable there.
+## What it does
+
+1. Builds a road network for Logan Square from **OpenStreetMap**.
+2. Generates ~118,000 daily car trips from **CMAP's regional travel model** +
+   **Census LODES**, including through-traffic via boundary "gateways".
+3. Simulates a full day of traffic with **MATSim** (agents choose routes,
+   congestion emerges).
+4. Validates simulated volumes against real **Chicago traffic counts**.
+5. Applies an **intervention** (e.g. fix potholes from 311 data), re-simulates,
+   and monetizes the difference → **benefit-cost ratio**.
+6. Renders the result as an animated, zoomable **deck.gl web map**.
+
+## What it's built with
+
+| Layer | Tooling |
+|-------|---------|
+| Pipeline / data | **Python 3.11** — geopandas, pyrosm, shapely, pyproj, pandas, lxml, networkx, requests |
+| Traffic engine | **MATSim 2024.0** (Java 17) via Gradle |
+| Visualization | **deck.gl** (self-contained HTML), matplotlib (static maps) |
+| Data sources | OSM (BBBike Chicago), CMAP c24q4 travel model, Census LODES + TIGERweb, Chicago Open Data (community areas, ADT counts, 311 potholes) |
+
+## Setup
+
+**Python** (uses Python 3.11 — not 3.14; geospatial wheels lag on 3.14):
 
 ```powershell
-C:\Users\dheer\AppData\Roaming\uv\python\cpython-3.11.15-windows-x86_64-none\python.exe -m venv .venv
+# create venv from a 3.11 interpreter, then:
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-`environment.yml` is retained as a conda-compatible reference, but conda is not required for this scaffold. `osmium-tool` is an optional external CLI and is not installed by `requirements.txt`.
-
-A JDK 17+ must be installed manually before the `matsim/` build and MATSim-dependent stages work. This includes S1 `pt2matsim` conversion and S4 calibration runs. The Gradle wrapper scripts are scaffolded; if `matsim/gradle/wrapper/gradle-wrapper.jar` is absent, generate it with:
+**Java** — a JDK 17 is required for MATSim. A portable Temurin 17 is expected at
+`tools/jdk-17.0.19+10` (gitignored). Set it before any gradle/java command:
 
 ```powershell
-cd matsim
-gradle wrapper --gradle-version 8.10.2
+$env:JAVA_HOME = "D:\Projects\CitySim\tools\jdk-17.0.19+10"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 ```
 
-No real data is downloaded by this scaffold.
-
-## Run Pipeline Stages
-
-List stages:
+Build the MATSim runner:
 
 ```powershell
-python cli.py run --help
+cd matsim; .\gradlew.bat --no-daemon installDist; cd ..
 ```
 
-Run all stages:
+## Run it end-to-end
+
+All pipeline stages are run via `cli.py` (see `python cli.py run --help`).
+Stages download real data into `data/` on first run and cache it.
 
 ```powershell
-python cli.py run
-```
-
-Run one stage:
-
-```powershell
+# 1. Boundary + TAZ crosswalk
 python cli.py run --stage s0
-python cli.py run --stage s6
+# 2. Road network (OSM -> network.xml.gz)
+python cli.py run --stage s1
+# 3. Demand: all-purpose internal trips, then cordon/through trips
+python cli.py run --stage s2c
+python cli.py run --stage s2d        # -> scenarios/logan_square/plans.xml.gz (~118k agents)
 ```
 
-Each current stage prints a TODO stub and returns without producing real artifacts.
-
-## Java MATSim
-
-From the `matsim` directory:
+Run the simulation (one simulated day, 10 % population sample):
 
 ```powershell
-.\gradlew.bat build
+cd scenarios\logan_square
+& "$env:JAVA_HOME\bin\java.exe" -Xmx8g -cp "..\..\matsim\build\install\citysim-matsim\lib\*" citysim.RunCitySim config.xml
+cd ..\..
 ```
 
-Run classes after building and replacing placeholder MATSim inputs:
+Validate against real traffic counts:
 
 ```powershell
-.\gradlew.bat runCitySim
-.\gradlew.bat calibrateWithCadyts
+python cli.py run --stage s4         # -> data/processed/calibration_validation.csv
 ```
 
-The Java classes reference `../scenarios/logan_square/config.xml`. Real `network.xml.gz`, `plans.xml.gz`, transit files, and calibration inputs are TODOs for the pipeline stages.
+Pothole intervention + benefit-cost:
+
+```powershell
+python cli.py run --stage s5         # builds network_potholes.xml.gz + config_baseline/fixed.xml
+# run BOTH scenarios (fixed == the clean-network run above; reuse or re-run):
+cd scenarios\logan_square
+& "$env:JAVA_HOME\bin\java.exe" -Xmx8g -cp "..\..\matsim\build\install\citysim-matsim\lib\*" citysim.RunCitySim config_baseline.xml
+cd ..\..
+python cli.py run --stage s6         # -> data/processed/pothole_bca.json (the BCR)
+```
+
+## See the simulation (live web viz)
+
+```powershell
+python viz\build_live_viz.py                 # -> scenarios/logan_square/output/live_traffic.html
+Invoke-Item scenarios\logan_square\output\live_traffic.html
+```
+
+Opens a dark 3-D map with glowing vehicles moving in real time. Drag to pan,
+scroll to zoom, Ctrl-drag to tilt/rotate; play/pause, time scrubber, speed
+slider, and a **scenario switcher** (potholes-fixed vs with-potholes).
+
+Static maps are also written to `scenarios/logan_square/output/`:
+`volume_map.png`, `pothole_map.png`, `peak_frame.png`.
 
 ## Tests
 
 ```powershell
-python -m pytest tests/
+.\.venv\Scripts\python.exe -m pytest tests/ --basetemp=.pytest_tmp
 ```
 
-The scaffold tests verify Python imports and CLI stage registration.
+## Status & caveats
+
+The pipeline runs end-to-end and yields a pothole **BCR ≈ 10.8**, but this is a
+**prototype** figure: the network is currently over-congested (gridlock),
+benefit coefficients and repair cost are placeholders, and potholes are
+cumulative historical 311 reports. See **`CLAUDE.md`** for full context,
+architecture, decisions, and the list of known limitations / next steps.
+
+## Repo layout
+
+```
+pipeline/        Python stages s0..s6 + crosswalk, demand, IO helpers
+matsim/          Gradle Java project (MATSim runner)
+scenarios/logan_square/   config*.xml + generated MATSim inputs/outputs (gitignored)
+viz/             deck.gl live-visualization builder
+data/{raw,interim,processed}/   downloaded + generated data (gitignored)
+params.yaml      central config (CRS, sources, coefficients, scenario knobs)
+CLAUDE.md        full project context for contributors / AI assistants
+```
