@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import math
 import re
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -128,6 +129,143 @@ def _format_float(value: float) -> str:
     return f"{value:.6f}".rstrip("0").rstrip(".")
 
 
+def _link_coords(link: MatsimLink, nodes_by_id: dict[str, MatsimNode]) -> list[tuple[float, float]]:
+    geometry = link.geometry
+    if geometry is not None and not getattr(geometry, "is_empty", False):
+        if hasattr(geometry, "coords"):
+            return [(float(x), float(y)) for x, y, *_ in geometry.coords]
+        if hasattr(geometry, "geoms"):
+            coords: list[tuple[float, float]] = []
+            for line in geometry.geoms:
+                line_coords = [(float(x), float(y)) for x, y, *_ in line.coords]
+                if coords and line_coords and coords[-1] == line_coords[0]:
+                    coords.extend(line_coords[1:])
+                else:
+                    coords.extend(line_coords)
+            if coords:
+                return coords
+
+    from_node = nodes_by_id[link.from_node]
+    to_node = nodes_by_id[link.to_node]
+    return [(from_node.x, from_node.y), (to_node.x, to_node.y)]
+
+
+def _merge_geometry(
+    in_link: MatsimLink,
+    out_link: MatsimLink,
+    nodes_by_id: dict[str, MatsimNode],
+) -> Any:
+    from shapely.geometry import LineString
+
+    coords = _link_coords(in_link, nodes_by_id)
+    out_coords = _link_coords(out_link, nodes_by_id)
+    if coords and out_coords and coords[-1] == out_coords[0]:
+        coords.extend(out_coords[1:])
+    else:
+        coords.extend(out_coords)
+
+    deduped: list[tuple[float, float]] = []
+    for coord in coords:
+        if not deduped or deduped[-1] != coord:
+            deduped.append(coord)
+
+    if len(deduped) < 2:
+        from_node = nodes_by_id[in_link.from_node]
+        to_node = nodes_by_id[out_link.to_node]
+        deduped = [(from_node.x, from_node.y), (to_node.x, to_node.y)]
+    return LineString(deduped)
+
+
+def _links_compatible(in_link: MatsimLink, out_link: MatsimLink) -> bool:
+    return in_link.modes == out_link.modes and in_link.permlanes == out_link.permlanes
+
+
+def simplify_network(nodes: list[MatsimNode], links: list[MatsimLink]) -> tuple[list[MatsimNode], list[MatsimLink]]:
+    """Merge compatible pass-through road chains into longer MATSim links."""
+    nodes_by_id = {node.node_id: node for node in nodes}
+    current_links = [link for link in links if link.length > 0 and link.from_node != link.to_node]
+
+    while True:
+        incoming: dict[str, list[MatsimLink]] = {}
+        outgoing: dict[str, list[MatsimLink]] = {}
+        for link in current_links:
+            incoming.setdefault(link.to_node, []).append(link)
+            outgoing.setdefault(link.from_node, []).append(link)
+
+        merge_pairs: list[tuple[str, MatsimLink, MatsimLink]] = []
+        for node_id in sorted(nodes_by_id):
+            node_incoming = incoming.get(node_id, [])
+            node_outgoing = outgoing.get(node_id, [])
+            if not node_incoming or not node_outgoing:
+                continue
+
+            for in_link in sorted(node_incoming, key=lambda item: item.link_id):
+                compatible_outgoing = [
+                    out_link
+                    for out_link in node_outgoing
+                    if in_link.from_node != out_link.to_node and _links_compatible(in_link, out_link)
+                ]
+                if len(compatible_outgoing) != 1:
+                    continue
+                out_link = compatible_outgoing[0]
+                compatible_incoming = [
+                    candidate
+                    for candidate in node_incoming
+                    if candidate.from_node != out_link.to_node and _links_compatible(candidate, out_link)
+                ]
+                if compatible_incoming == [in_link]:
+                    merge_pairs.append((node_id, in_link, out_link))
+
+        used_link_ids: set[str] = set()
+        selected_pairs: list[tuple[str, MatsimLink, MatsimLink]] = []
+        for node_id, in_link, out_link in merge_pairs:
+            if in_link.link_id in used_link_ids or out_link.link_id in used_link_ids:
+                continue
+            used_link_ids.update({in_link.link_id, out_link.link_id})
+            selected_pairs.append((node_id, in_link, out_link))
+
+        if not selected_pairs:
+            break
+
+        consumed = {link_id for _, in_link, out_link in selected_pairs for link_id in (in_link.link_id, out_link.link_id)}
+        next_links = [link for link in current_links if link.link_id not in consumed]
+        existing_link_ids = {link.link_id for link in next_links}
+        for _, in_link, out_link in selected_pairs:
+            total_length = in_link.length + out_link.length
+            travel_time = 0.0
+            if in_link.freespeed > 0:
+                travel_time += in_link.length / in_link.freespeed
+            if out_link.freespeed > 0:
+                travel_time += out_link.length / out_link.freespeed
+            new_freespeed = total_length / travel_time if travel_time > 0 else min(in_link.freespeed, out_link.freespeed)
+            new_id = _unique_link_id(f"{in_link.link_id}-{out_link.link_id}", existing_link_ids)
+            next_links.append(
+                MatsimLink(
+                    link_id=new_id,
+                    from_node=in_link.from_node,
+                    to_node=out_link.to_node,
+                    length=total_length,
+                    freespeed=new_freespeed,
+                    capacity=min(in_link.capacity, out_link.capacity),
+                    permlanes=in_link.permlanes,
+                    modes=in_link.modes,
+                    geometry=_merge_geometry(in_link, out_link, nodes_by_id),
+                    is_connector=in_link.is_connector or out_link.is_connector,
+                )
+            )
+
+        current_links = [link for link in next_links if link.length > 0 and link.from_node != link.to_node]
+
+    used_nodes = {node_id for link in current_links for node_id in (link.from_node, link.to_node)}
+    return [node for node in nodes if node.node_id in used_nodes], current_links
+
+
+def _median_link_length(links: list[MatsimLink]) -> float:
+    if not links:
+        return 0.0
+    return float(statistics.median(link.length for link in links))
+
+
 def write_matsim_network_xml(nodes: list[MatsimNode], links: list[MatsimLink], output_path: str | Path) -> Path:
     """Write a gzipped MATSim network_v2 XML file."""
     output = Path(output_path)
@@ -241,8 +379,6 @@ def _edge_base_id(row, index: Any) -> str:
 
 def build_matsim_network_from_gdfs(nodes_gdf, edges_gdf, crs: str) -> tuple[list[MatsimNode], list[MatsimLink]]:
     """Convert pyrosm node/edge GeoDataFrames to MATSim node/link records."""
-    import networkx as nx
-
     nodes_projected = nodes_gdf.to_crs(crs)
     edges_projected = edges_gdf.to_crs(crs)
     node_col = _node_id_column(nodes_projected)
@@ -300,7 +436,8 @@ def build_matsim_network_from_gdfs(nodes_gdf, edges_gdf, crs: str) -> tuple[list
                 )
             )
 
-    return _keep_largest_strong_component(nodes_by_id, links, nx)
+    used_nodes = {node_id for link in links for node_id in (link.from_node, link.to_node)}
+    return [node for node_id, node in nodes_by_id.items() if node_id in used_nodes], links
 
 
 def _unique_link_id(base_id: str, used_link_ids: set[str]) -> str:
@@ -338,6 +475,7 @@ def _keep_largest_strong_component(
 def run(cfg) -> None:
     """INPUT: Geofabrik Illinois OSM PBF plus Logan Square buffered boundary. OUTPUT: MATSim network.xml.gz and data/interim/network_links.gpkg."""
     from pyrosm import OSM
+    import networkx as nx
 
     network_path = cfg.project_root / "scenarios" / "logan_square" / NETWORK_OUTPUT
     links_path = cfg.data_interim / LINKS_OUTPUT
@@ -358,6 +496,12 @@ def run(cfg) -> None:
     nodes_gdf, edges_gdf = osm.get_network(network_type="driving", nodes=True)
 
     nodes, links = build_matsim_network_from_gdfs(nodes_gdf, edges_gdf, cfg.crs)
+    raw_link_count = len(links)
+    raw_median_length = _median_link_length(links)
+    nodes, links = simplify_network(nodes, links)
+    simplified_link_count = len(links)
+    simplified_median_length = _median_link_length(links)
+    nodes, links = _keep_largest_strong_component({node.node_id: node for node in nodes}, links, nx)
     if not nodes or not links:
         raise ValueError("No routable driving network links remained after largest-component filtering.")
 
@@ -369,6 +513,8 @@ def run(cfg) -> None:
     print(
         "s1 complete: "
         f"nodes={len(nodes)}; links={len(links)}; total_km={total_km:.2f}; "
+        f"simplified_links={raw_link_count}->{simplified_link_count}; "
+        f"median_link_m={raw_median_length:.1f}->{simplified_median_length:.1f}; "
         f"bbox=({_format_float(minx)}, {_format_float(miny)}, {_format_float(maxx)}, {_format_float(maxy)})"
     )
 

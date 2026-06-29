@@ -29,15 +29,16 @@
     <param name="endTime" value="30:00:00" />
     <param name="numberOfThreads" value="4" />
     <!-- 10% population sample -> scale link flow capacity to match. Storage is
-         kept higher (0.15) because a strict 0.1 storage on this dense grid of
-         short links can't hold even one vehicle, causing artificial gridlock. -->
+         kept higher because strict sampled storage can still over-constrain
+         shorter urban links. -->
     <param name="flowCapacityFactor" value="0.1" />
-    <param name="storageCapacityFactor" value="0.15" />
+    <param name="storageCapacityFactor" value="0.5" />
+    <param name="trafficDynamics" value="kinematicWaves" />
     <param name="mainMode" value="car" />
     <param name="snapshotStyle" value="queue" />
     <!-- Resolve any residual deadlocks instead of letting agents wait forever. -->
     <param name="removeStuckVehicles" value="true" />
-    <param name="stuckTime" value="30.0" />
+    <param name="stuckTime" value="60.0" />
   </module>
 
   <module name="scoring">
