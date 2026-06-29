@@ -171,6 +171,18 @@ def build_taz_link_crosswalk(taz_gdf: Any, network: Any) -> TazLinkCrosswalk:
                 link = geometry_id_to_link[id(geometry)]
             if geometry.intersects(polygon):
                 candidate_links.append(link)
+        if not candidate_links:
+            # Small/edge TAZ with no links inside it (e.g. after network
+            # simplification) — fall back to the single nearest link.
+            nearest_idx = tree.nearest(polygon)
+            try:
+                nearest_idx = operator_index(nearest_idx)
+            except TypeError:
+                nearest_idx = None
+            if nearest_idx is not None:
+                candidate_links = [links[nearest_idx]]
+            else:
+                candidate_links = [geometry_id_to_link[id(nearest_idx)]]
         crosswalk.taz_to_links[taz_id] = candidate_links
 
     global _ACTIVE_CROSSWALK
