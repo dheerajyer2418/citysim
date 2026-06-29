@@ -80,20 +80,50 @@ Shared: `pipeline/plans_io.py` (population writer + `stochastic_count`),
   import** → have codex write code + offline tests only; the human runs the
   pipeline, downloads, and git.
 
-## Current state & known limitations
+## WHERE WE ARE NOW (read this first in a new session)
 
-- Full pipeline runs end-to-end and produces a pothole **BCR ≈ 10.8** — but this
-  is a **prototype number**, not policy-grade, because:
-  1. **Gridlock**: ~130-min mean trips (network over-saturated); absolute delay
-     unreliable. *Biggest thing to fix.*
-  2. FHWA coefficients, repair cost, annual-days are **placeholders**.
-  3. Potholes are **cumulative historical** 311 reports, not current open.
-  4. Per-link calibration rough (S4 aggregate good, per-link GEH ~9%).
+The simulation is **healthy and gridlock-free**, running on **INTERNAL demand
+only** (s2c, ~32k agents). Latest verified run: 96% trips complete, median trip
+7.8 min, mean 11 min, 27 km/h. The live deck.gl viz
+(`scenarios/logan_square/output/live_traffic.html`) is built and works.
+
+**How we got here (the gridlock saga):** the sim used to deadlock (mean 130-160
+min). After much diagnosis the root cause was the **cordon (s2d) gateway
+concentration** — thousands of external zones map to ~57 boundary nodes, so
+~60k veh/day spawned on ONE link and cascaded into deadlock (NOT capacity:
+network mean V/C ≈ 0.29). Permanent fixes made: (a) `s1` now simplifies the
+network (merge degree-2 micro-links: median link 12m→51m); (b) crosswalk has a
+nearest-link fallback for empty TAZ; (c) config uses storageCapacityFactor 1.0
+(decoupled from the 0.1 flow sample) + queue model + removeStuckVehicles. To get
+a clean run we **dropped cordon through-traffic** (s2d) for now.
+
+**Active manual hacks not yet in the pipeline (make permanent or re-apply):**
+- **Departure smoothing**: plan `end_time`s were jittered ~45min (numpy
+  normal, σ=2700s) to break a 180k-trips-in-one-hour TOD spike. This is a manual
+  post-process on plans.xml.gz — NOT a pipeline stage. Re-apply after any demand
+  regeneration, or fold it into s2c/cmap_demand.
+- `output_baseline`/`output_fixed` were deleted, so the pothole BCR (s6) needs a
+  re-run on the current network.
+
+## Open items / next steps (in priority order)
+
+1. **Re-add through-traffic without gridlock** — fix s2d so each external zone's
+   cordon trips are distributed across the K-nearest **arterial** boundary links
+   (weighted by capacity), instead of all piling on the single nearest node.
+   This restores realistic arterial volumes (the point of s2d) without the
+   concentration deadlock. After this, re-run the full chain.
+2. **Make departure-smoothing a real pipeline step** (in cmap_demand / s2d), then
+   drop the manual jitter.
+3. **Re-run the pothole BCR** (s5 → config_baseline run → s6) on the fixed
+   network for a trustworthy number.
+4. Real FHWA coefficients + filter 311 potholes to currently-open/recent.
+5. Extend the edit layer to bike lanes / road diets (s5 already edits the network).
+
+## Earlier known limitations (still true)
+
+- The prototype pothole **BCR ≈ 10.8** (from the pre-gridlock-fix run) is not
+  policy-grade: placeholder coefficients, cumulative-historical potholes, rough
+  per-link calibration (S4 aggregate good ~factor 1.0, per-link GEH ~9%).
 - For interventions, **deltas** (before/after same links) are more robust than
   absolute values.
-
-## Next steps
-
-1. Fix gridlock (storage capacity / demand level / gateway concentration).
-2. Real coefficients + filter potholes to open/recent.
-3. Extend the edit layer to bike lanes / road diets (s5 already supports network edits).
+- Cadyts auto-calibration unavailable on MATSim 2024.0 — S4 is validate+correct.

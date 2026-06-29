@@ -117,11 +117,21 @@ Static maps are also written to `scenarios/logan_square/output/`:
 
 ## Status & caveats
 
-The pipeline runs end-to-end and yields a pothole **BCR ≈ 10.8**, but this is a
-**prototype** figure: the network is currently over-congested (gridlock),
-benefit coefficients and repair cost are placeholders, and potholes are
-cumulative historical 311 reports. See **`CLAUDE.md`** for full context,
-architecture, decisions, and the list of known limitations / next steps.
+The simulation is **gridlock-free and healthy** running on **internal demand
+only** (s2c): latest run had 96% of trips complete, median trip 7.8 min, ~27
+km/h. The live viz works.
+
+The **cordon/through-traffic stage (s2d) is currently paused** — its gateway
+model concentrated ~60k veh/day onto a single boundary link and caused a
+cascading deadlock; the fix (distribute entries across arterial boundary links)
+is the top open item. Note the **departure-time smoothing** is currently a
+manual post-process on `plans.xml.gz`, not a pipeline stage (re-apply after
+regenerating demand). The earlier pothole **BCR ≈ 10.8** is a pre-fix prototype
+(placeholder coefficients, historical potholes) and should be re-run on the
+current network.
+
+See **`CLAUDE.md` → "WHERE WE ARE NOW"** for the full state, the gridlock
+post-mortem, active manual hacks, and the prioritized next steps.
 
 ## Repo layout
 
