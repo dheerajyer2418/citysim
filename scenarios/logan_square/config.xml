@@ -33,11 +33,11 @@
          shorter urban links. -->
     <param name="flowCapacityFactor" value="0.1" />
     <param name="storageCapacityFactor" value="0.5" />
-    <param name="trafficDynamics" value="kinematicWaves" />
     <param name="mainMode" value="car" />
     <param name="snapshotStyle" value="queue" />
-    <!-- Resolve any residual deadlocks instead of letting agents wait forever. -->
-    <param name="removeStuckVehicles" value="true" />
+    <!-- false (MATSim-recommended): stuck vehicles are forced onto the next link
+         instead of deleted, so trips complete and delay is reflected in time. -->
+    <param name="removeStuckVehicles" value="false" />
     <param name="stuckTime" value="60.0" />
   </module>
 

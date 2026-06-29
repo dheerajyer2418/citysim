@@ -246,7 +246,7 @@ def simplify_network(nodes: list[MatsimNode], links: list[MatsimLink]) -> tuple[
                     to_node=out_link.to_node,
                     length=total_length,
                     freespeed=new_freespeed,
-                    capacity=min(in_link.capacity, out_link.capacity),
+                    capacity=max(in_link.capacity, out_link.capacity),
                     permlanes=in_link.permlanes,
                     modes=in_link.modes,
                     geometry=_merge_geometry(in_link, out_link, nodes_by_id),
