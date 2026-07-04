@@ -47,10 +47,10 @@ def _sources_widget() -> str:
         for name, url in SOURCES
     )
     return (
-        '<button id="srcBtn" style="position:absolute;top:14px;right:16px;z-index:60;background:#12283c;'
+        '<button id="srcBtn" style="position:absolute;bottom:78px;left:16px;z-index:60;background:#12283c;'
         'color:#dff;border:1px solid #3c6f8c;border-radius:7px;padding:8px 12px;font:13px system-ui;cursor:pointer;">'
         "Sources</button>"
-        '<div id="srcPanel" style="display:none;position:absolute;top:52px;right:16px;z-index:60;'
+        '<div id="srcPanel" style="display:none;position:absolute;bottom:120px;left:16px;z-index:60;'
         "width:min(320px,calc(100vw - 32px));background:rgba(6,14,22,.96);border:1px solid rgba(120,160,210,.3);"
         'border-radius:8px;padding:12px 14px;font:12px/1.6 system-ui;color:#e7f1ff;">'
         '<h3 style="margin:0 0 6px 0;font-size:13px;">Data sources</h3>'
@@ -97,7 +97,7 @@ INDEX_HTML = """<!DOCTYPE html>
   <p>CitySim scores every street in Logan Square, Chicago for how much it needs attention &mdash; using public crash, pothole, and traffic-count data &mdash; and pairs it with an agent-based traffic model for testing changes like bike lanes or road diets.</p>
   <div class="cards">
     <a class="card" href="needs_map.html"><b>Which streets need attention? &rarr;</b><span>A 0-100 priority map built from public crash, pothole, and traffic data.</span></a>
-    <a class="card" href="live_traffic.html"><b>See the traffic simulation &rarr;</b><span>An animated day of simulated trips and before/after scenario results.</span></a>
+    <a class="card" href="live_traffic.html"><b>Test a street change &rarr;</b><span>Pick a bike lane or pothole repair and watch the before/after traffic on a simulated day.</span></a>
   </div>
   <p class="note">This is a planning tool, not ground truth. Estimates are sketch-level; before/after differences are more reliable than absolute values. See "Sources" for the underlying data.</p>
 </div>

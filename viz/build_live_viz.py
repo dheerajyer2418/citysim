@@ -29,18 +29,11 @@ NETWORK_LINKS = ROOT / "data" / "interim" / "network_links.gpkg"
 BCA_JSON = ROOT / "data" / "processed" / "pothole_bca.json"
 SCENARIO_COMPARISON_CSV = ROOT / "data" / "processed" / "scenario_comparison.csv"
 
-SCENARIOS = [
-    ("add_bike_lane", "fixed", "No bike lane (clean network)", SCEN_DIR / "output_fixed"),
-    ("add_bike_lane", "bike_lane", "Milwaukee Ave bike lane", SCEN_DIR / "output_bike_lane"),
-]
-
-INTERVENTIONS = [
-    {
-        "id": "add_bike_lane",
-        "name": "Add bike lane",
-        "plain_language": "Convert part of Milwaukee Ave car capacity into bike-lane space.",
-    },
-]
+USER_SCENARIOS_INTERVENTION = {
+    "id": "user_scenarios",
+    "name": "User Scenarios",
+    "plain_language": "Street changes from the local scenario builder.",
+}
 
 
 def read_pothole_comparison(path: Path = BCA_JSON) -> dict[str, Any] | None:
@@ -232,7 +225,8 @@ HTML = """<!DOCTYPE html>
   .pill{background:rgba(10,20,32,.68);backdrop-filter:blur(4px);padding:8px 12px;border-radius:8px;border:1px solid rgba(90,160,255,.25);}
   #scenwrap{position:absolute;top:14px;right:16px;z-index:5;color:#cfe0ff;}
   #infowrap{position:absolute;right:16px;top:62px;z-index:6;color:#dcecff;max-width:360px;}
-  #infoToggle{width:100%;text-align:left;background:#18334d;border-color:#3c7da6;}
+  #infoToggle{width:100%;text-align:left;background:#39c0ff;color:#06121d;border:1px solid #8fe0ff;font-weight:700;box-shadow:0 0 14px rgba(57,192,255,.65);}
+  #infoToggle:hover{background:#5fd0ff;}
   #infoPanel{display:none;margin-top:8px;line-height:1.42;font-size:13px;color:#d7e6f7;}
   #infoPanel.open{display:block;}
   #infoPanel h2{font-size:17px;margin:0 0 8px 0;color:#fff;letter-spacing:0;}
@@ -247,6 +241,9 @@ HTML = """<!DOCTYPE html>
   .summaryMetric span{display:block;color:#8ea4bb;font-size:10px;text-transform:uppercase;letter-spacing:0;}
   .summaryMetric b{font-size:15px;color:#f3f8ff;}
   #summaryWarn{margin-top:9px;color:#ffd48a;font-size:12px;line-height:1.35;}
+  #summaryDefs{margin-top:9px;color:#9fb7cc;font-size:11px;line-height:1.4;}
+  #downloadCsv{display:inline-block;margin-top:9px;color:#8fd6ff;font-size:12.5px;text-decoration:none;font-weight:600;}
+  #downloadCsv:hover{text-decoration:underline;}
   @media (max-width:760px){
     #hud{left:10px;top:10px;min-width:0;width:min(310px,calc(100vw - 20px));}
     #scenwrap{left:10px;right:10px;top:auto;bottom:82px;}
@@ -284,17 +281,19 @@ HTML = """<!DOCTYPE html>
 <details id="summary" class="pill" open>
   <summary id="summaryTitle">Scenario Statistics</summary>
   <div id="summaryGrid">
-    <div class="summaryMetric"><span>Completion</span><b id="sumVht">--</b></div>
-    <div class="summaryMetric"><span>VHT vs clean</span><b id="sumTrip">--</b></div>
-    <div class="summaryMetric"><span>Stuck trip change</span><b id="sumStuck">--</b></div>
-    <div class="summaryMetric"><span>VMT vs clean</span><b id="sumBcr">--</b></div>
-    <div class="summaryMetric"><span>Affected links</span><b id="sumBenefit">--</b></div>
-    <div class="summaryMetric"><span>Reference</span><b id="sumCost">--</b></div>
+    <div class="summaryMetric"><span>Trips completed</span><b id="sumComplete">--</b></div>
+    <div class="summaryMetric"><span>Avg trip time</span><b id="sumMeanTrip">--</b></div>
+    <div class="summaryMetric"><span>Extra driving time vs no change (VHT)</span><b id="sumVht">--</b></div>
+    <div class="summaryMetric"><span>Distance driven vs no change (VMT)</span><b id="sumVmt">--</b></div>
+    <div class="summaryMetric"><span>Extra stuck trips vs no change</span><b id="sumStuck">--</b></div>
+    <div class="summaryMetric"><span>Streets changed</span><b id="sumLinks">--</b></div>
   </div>
+  <div id="summaryDefs"><b>VHT</b> = vehicle-hours travelled: total hours all cars spend driving. <b>VMT</b> = vehicle-miles travelled: total miles all cars drive. "vs no change" compares this street change to today's streets &mdash; more driving time or stuck trips means worse car traffic.</div>
   <div id="summaryWarn"></div>
+  <a id="downloadCsv" href="data/scenario_comparison.csv" download>&#8595; Download all scenario data (CSV)</a>
 </details>
 <div id="infowrap">
-  <button id="infoToggle">Info</button>
+  <button id="infoToggle">&#9432; What is this?</button>
   <div id="infoPanel" class="pill">
     <h2>What This Shows</h2>
     <p>This is a traffic simulation for Logan Square. Each dot is a sampled car trip moving through the road network during a simulated day.</p>
@@ -416,10 +415,11 @@ const interventionSel=document.getElementById('intervention'), sel=document.getE
 const activeEl=document.getElementById('active'), doneEl=document.getElementById('done');
 const lostEl=document.getElementById('lost'), shownEl=document.getElementById('shown');
 const infoToggle=document.getElementById('infoToggle'), infoPanel=document.getElementById('infoPanel');
-const sumTitle=document.getElementById('summaryTitle'), sumVht=document.getElementById('sumVht');
-const sumTrip=document.getElementById('sumTrip'), sumStuck=document.getElementById('sumStuck');
-const sumBcr=document.getElementById('sumBcr'), sumBenefit=document.getElementById('sumBenefit');
-const sumCost=document.getElementById('sumCost'), sumWarn=document.getElementById('summaryWarn');
+const sumTitle=document.getElementById('summaryTitle');
+const sumComplete=document.getElementById('sumComplete'), sumMeanTrip=document.getElementById('sumMeanTrip');
+const sumVht=document.getElementById('sumVht'), sumVmt=document.getElementById('sumVmt');
+const sumStuck=document.getElementById('sumStuck'), sumLinks=document.getElementById('sumLinks');
+const sumWarn=document.getElementById('summaryWarn');
 
 function fmtNumber(value,digits=0){return value===null||value===undefined||Number.isNaN(Number(value))?'--':Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});}
 function renderSummary(){
@@ -427,25 +427,31 @@ function renderSummary(){
   const c=s.stats||null;
   document.getElementById('summary').style.display='block';
   sumTitle.textContent=s.name;
-  sumBenefit.textContent=((s.affected_paths||[]).length).toLocaleString();
+  sumLinks.textContent=((s.affected_paths||[]).length).toLocaleString();
   if(!c){
+    sumComplete.textContent='--';
+    sumMeanTrip.textContent='--';
     sumVht.textContent='--';
-    sumTrip.textContent='--';
+    sumVmt.textContent='--';
     sumStuck.textContent='--';
-    sumBcr.textContent='--';
-    sumCost.textContent='--';
-    sumWarn.textContent='No comparison statistics found yet. Run s6 after this scenario completes.';
+    sumWarn.textContent='No comparison numbers yet for this scenario.';
     return;
   }
-  sumVht.textContent=fmtNumber(Number(c.completion_rate)*100,1)+'%';
+  sumComplete.textContent=fmtNumber(Number(c.completion_rate)*100,1)+'%';
+  sumMeanTrip.textContent=fmtNumber(Number(c.mean_trip_minutes),1)+' min';
   const vht=Number(c.vht_delta_vs_reference);
   const stuck=Number(c.stuck_trips_delta_vs_reference);
   const vmt=Number(c.vmt_delta_vs_reference);
-  sumTrip.textContent=(vht>=0?'+':'')+fmtNumber(vht,1)+' hr';
+  sumVht.textContent=(vht>=0?'+':'')+fmtNumber(vht,0)+' hr';
+  sumVmt.textContent=(vmt>=0?'+':'')+fmtNumber(vmt,0)+' mi';
   sumStuck.textContent=(stuck>=0?'+':'')+fmtNumber(stuck,0);
-  sumBcr.textContent=(vmt>=0?'+':'')+fmtNumber(vmt,0)+' mi';
-  sumCost.textContent=String(c.reference_scenario||'fixed');
-  sumWarn.textContent='Compared with the clean/fixed network. Positive VHT or stuck-trip deltas mean worse car traffic.';
+  if(s.scenario_id==='fixed'){
+    sumWarn.textContent='This is today\\'s streets - the baseline every change is compared against.';
+  }else{
+    sumWarn.textContent=(vht>0||stuck>0)
+      ? 'This change adds driving time / stuck trips vs today - the trade-off of calming this street.'
+      : 'This change reduces driving time / stuck trips vs today.';
+  }
 }
 
 DATA.interventions.forEach((item)=>{const o=document.createElement('option');o.value=item.id;o.textContent=item.name;interventionSel.appendChild(o);});
@@ -466,7 +472,7 @@ populateScenarios();
 refreshScen();
 renderSummary();
 playBtn.onclick=()=>{playing=!playing;playBtn.textContent=playing?'Pause':'Play';};
-infoToggle.onclick=()=>{infoPanel.classList.toggle('open'); infoToggle.textContent=infoPanel.classList.contains('open')?'Hide Info':'Info';};
+infoToggle.onclick=()=>{infoPanel.classList.toggle('open'); infoToggle.textContent=infoPanel.classList.contains('open')?'Hide':'\\u24d8 What is this?';};
 scrub.oninput=e=>{currentTime=+e.target.value;};
 speedEl.oninput=e=>{speed=+e.target.value;};
 document.querySelectorAll('.preset').forEach(btn=>btn.onclick=()=>{speed=+btn.dataset.speed;speedEl.value=speed;});
@@ -509,8 +515,10 @@ def main() -> None:
     keep_every = max(1, round(118000 / max(args.sample, 1)))
     stats_by_scenario = read_scenario_stats()
 
-    scenario_entries = list(SCENARIOS)
-    interventions = list(INTERVENTIONS)
+    scenario_entries = [
+        ("user_scenarios", "fixed", "No change (current streets)", SCEN_DIR / "output_fixed"),
+    ]
+    interventions = [USER_SCENARIOS_INTERVENTION]
     manifest_path = ROOT / "data" / "interim" / "user_scenarios" / "manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
@@ -521,15 +529,7 @@ def main() -> None:
         for item in manifest.get("scenarios", [])
         if item.get("id") and item.get("name") and item.get("output_dir")
     ]
-    if custom_entries:
-        scenario_entries.extend(custom_entries)
-        interventions.append(
-            {
-                "id": "user_scenarios",
-                "name": "User scenarios",
-                "plain_language": "Street changes drawn in the local scenario builder.",
-            }
-        )
+    scenario_entries.extend(custom_entries)
 
     scenarios = []
     all_points = []
@@ -549,9 +549,7 @@ def main() -> None:
         tmin = min(trip["timestamps"][0] for trip in trips)
         tmax = max(trip["timestamps"][-1] for trip in trips)
         affected_csv = None
-        if scenario_id == "bike_lane":
-            affected_csv = ROOT / "data" / "interim" / "bike_lane_links.csv"
-        elif intervention_id == "user_scenarios":
+        if intervention_id == "user_scenarios" and scenario_id != "fixed":
             affected_csv = ROOT / "data" / "interim" / "user_scenarios" / scenario_id / "selected_links.csv"
         scenarios.append(
             {
