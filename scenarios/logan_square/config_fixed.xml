@@ -29,15 +29,20 @@
     <param name="endTime" value="30:00:00"/>
     <param name="numberOfThreads" value="4"/>
     <!-- 10% population sample -> scale link flow capacity to match. Storage is
-         kept higher (0.15) because a strict 0.1 storage on this dense grid of
-         short links can't hold even one vehicle, causing artificial gridlock. -->
+         kept higher because strict sampled storage can still over-constrain
+         shorter urban links. -->
     <param name="flowCapacityFactor" value="0.1"/>
-    <param name="storageCapacityFactor" value="0.15"/>
+    <!-- storage is NOT scaled to the 10% sample: full storage lets links hold
+         realistic queues so short links don't seed spurious circular deadlocks
+         (network mean V/C is only ~0.3 — gridlock was an artifact, not demand). -->
+    <param name="storageCapacityFactor" value="1.0"/>
     <param name="mainMode" value="car"/>
     <param name="snapshotStyle" value="queue"/>
-    <!-- Resolve any residual deadlocks instead of letting agents wait forever. -->
+    <!-- deadlock-breaker for residual circular queue lock. Ten minutes avoids
+         treating normal urban spillback as stuck while still clearing true
+         deadlocks before the 30-hour simulation horizon. -->
     <param name="removeStuckVehicles" value="true"/>
-    <param name="stuckTime" value="30.0"/>
+    <param name="stuckTime" value="600.0"/>
   </module>
 
   <module name="scoring">

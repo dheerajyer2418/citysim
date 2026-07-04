@@ -10,6 +10,7 @@ from pipeline.cmap_demand import (
     activity_types_for_trip,
     iter_internal_auto_rows,
     sample_departure_seconds,
+    smooth_departure_seconds,
 )
 from pipeline.plans_io import write_population
 
@@ -23,6 +24,11 @@ TOD_WINDOWS = {
 class MidpointRng:
     def uniform(self, low: float, high: float) -> float:
         return (low + high) / 2.0
+
+
+class FixedNormalRng:
+    def normal(self, mean: float, std: float) -> float:
+        return mean + std
 
 
 def test_filter_keeps_only_internal_internal_auto_rows() -> None:
@@ -47,6 +53,12 @@ def test_tod_sampler_uses_windows_and_wraps_na() -> None:
     assert 36000 <= md_departure < 50400
     assert 0 <= na_departure < 86400
     assert na_departure == 3600
+
+
+def test_departure_smoothing_applies_jitter_and_wraps_day() -> None:
+    assert smooth_departure_seconds(1000.0, 0.0, FixedNormalRng()) == 1000.0
+    assert smooth_departure_seconds(1000.0, 300.0, FixedNormalRng()) == 1300.0
+    assert smooth_departure_seconds(86300.0, 300.0, FixedNormalRng()) == 200.0
 
 
 def test_activity_type_mapping_uses_home_anchor() -> None:

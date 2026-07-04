@@ -18,6 +18,9 @@ class LinkRecord:
     to_node: str
     geometry: Any
     is_connector: bool = False
+    capacity: float = 0.0
+    freespeed: float = 0.0
+    length: float = 0.0
 
 
 @dataclass
@@ -96,6 +99,9 @@ def _coerce_links(network: Any) -> list[LinkRecord]:
                     to_node=to_node,
                     geometry=row.geometry,
                     is_connector=is_connector,
+                    capacity=float(row.get("capacity", 0.0) or 0.0),
+                    freespeed=float(row.get("freespeed", 0.0) or 0.0),
+                    length=float(row.get("length", row.geometry.length) or 0.0),
                 )
             )
         return links
@@ -122,6 +128,9 @@ def load_links_from_gpkg(path: str | Path) -> list[LinkRecord]:
                 to_node=str(row["to_node"]),
                 geometry=row.geometry,
                 is_connector=bool(row.get("is_connector", False)),
+                capacity=float(row.get("capacity", 0.0) or 0.0),
+                freespeed=float(row.get("freespeed", 0.0) or 0.0),
+                length=float(row.get("length", row.geometry.length) or 0.0),
             )
         )
     return links

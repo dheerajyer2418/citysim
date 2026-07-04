@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 .pytest_cache/
+.pytest_tmp/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -32,15 +33,24 @@ data/processed/*
 scenarios/*/output/
 scenarios/*/output_*/
 *.mvi
-# Generated MATSim inputs (regenerable from the pipeline) — keep config*.xml
+
+# Generated MATSim inputs; keep canonical config*.xml
 scenarios/*/*.xml.gz
 scenarios/*/counts.xml
+scenarios/*/config_user_*.xml
+scenarios/*/network_user_*.xml.gz
 
 # Local files
 .idea/
 .vscode/
 .claude/
 *.log
+server_stdout.log
+server_stderr.log
 
-# Local portable toolchain (JDK, etc.) — not committed
+# Local portable toolchain (JDK, etc.); not committed
 tools/
+
+# Public static site for Vercel is committed (pre-built maps embed only public data)
+!public/
+!public/**

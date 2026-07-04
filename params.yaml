@@ -28,6 +28,10 @@ sources:
     roster:
       member: "trip_roster_c24q4_100.csv"
       auto_modes: [1, 2, 3]
+      # Inferred from roster volume patterns and CMAP mode structure:
+      # auto 1-3; transit 4-6; walk/bike/other 7-9. Confirm against the
+      # CMAP c24q4 trip-based-model mode dictionary.
+      transit_modes: [4, 5, 6]
       # Derived approximation from CMAP c24q4 roster time-period labels.
       # Seconds after midnight; NA intentionally spans 20:00-06:00 and wraps
       # after sampling with modulo 86400.
@@ -43,6 +47,15 @@ sources:
         PM3: [64800, 72000]
     cordon:
       gateway_activity_type: "gateway"
+      # Distribute external cordon demand across nearby arterial links instead
+      # of concentrating each external zone on a single nearest node.
+      gateway_k_nearest: 5
+      gateway_min_capacity: 1000
+      gateway_boundary_band_m: 300
+      # Full one-end-internal cordon demand overwhelms this small subarea.
+      # Keep internal demand at the scenario sample fraction, but start cordon
+      # trips lower and tune upward after diagnostics stay healthy.
+      sample_fraction_multiplier: 0.05
     trip_tables:
       dataset: "c24q4"
       # c24q4 base-year (analysis year ~2019) regional model bundle, ~2.8 GB.
@@ -60,10 +73,22 @@ sources:
       url: "https://example.invalid/cmap/c24q4/timau_counts.csv"
       year: 2024 # PLACEHOLDER
   gtfs:
-    cta_url: "https://example.invalid/gtfs/cta.zip"
-    metra_url: "https://example.invalid/gtfs/metra.zip"
-    pace_url: "https://example.invalid/gtfs/pace.zip"
-    year: 2026 # PLACEHOLDER
+    enabled: false # master switch; default OFF so the full pipeline stays green offline / without network approval
+    service_date: "2026-07-08" # representative weekday (Wed); auto-fallback if no active service
+    access_buffer_m: 1200 # walk-access buffer (m) around the Logan Square boundary for stop inclusion
+    vehicle:
+      bus: { seats: 38, standing_room: 40, length_m: 18.0, pce: 2.8 }
+      rail: { seats: 500, standing_room: 500, length_m: 150.0, pce: 0.0 }
+    feeds:
+      - name: cta
+        enabled: true
+        url: "https://www.transitchicago.com/downloads/sch_data/google_transit.zip"
+      - name: metra
+        enabled: false
+        url: "https://schedules.metrarail.com/gtfs/schedule.zip"
+      - name: pace
+        enabled: false
+        url: "https://www.pacebus.com/sites/default/files/2020-02/GTFS.zip"
   socrata:
     domain: "data.cityofchicago.org"
     community_areas:
@@ -80,34 +105,190 @@ sources:
       dataset_id: "PLACEHOLDER_TNP_TRIPS"
       year: 2026 # PLACEHOLDER
     crashes:
-      dataset_id: "PLACEHOLDER_CRASHES"
+      dataset_id: "85ca-t3if"
       year: 2026 # PLACEHOLDER
 
 scenario:
   sample_fraction: 0.1
   iterations: 50
+  # Smooths CMAP roster time-period spikes by applying zero-mean normal jitter
+  # to each generated MATSim departure time. 2700s = 45 minutes.
+  departure_jitter_std_seconds: 2700
 
 fhwa_coefficients:
-  value_of_time_usd_per_hr: 21.50 # PLACEHOLDER
+  value_of_time_usd_per_hr: 21.50
+  vehicle_operating_cost_usd_per_mile: 0.54
+  external_highway_use_cost_usd_per_vmt: 0.09
   emissions_usd_per_ton:
-    co2: 51.00 # PLACEHOLDER
-    nox: 15000.00 # PLACEHOLDER
-    pm25: 420000.00 # PLACEHOLDER
+    co2: 51.00
+    nox: 15000.00
+    pm25: 420000.00
   crash_cost_usd:
-    fatal: 12500000.00 # PLACEHOLDER
-    injury: 220000.00 # PLACEHOLDER
-    pdo: 12800.00 # PLACEHOLDER
-  vehicle_damage_usd_per_vmt: 0.07 # PLACEHOLDER
+    fatal: 12500000.00
+    injury: 220000.00
+    pdo: 12800.00
+  vehicle_damage_usd_per_vmt: 0.07
+
+coefficient_sources:
+  required: true
+  values:
+    value_of_time_usd_per_hr:
+      source: "USDOT Benefit-Cost Analysis Guidance default travel-time valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+      note: "Local personal auto travel sketch value, held in 2026 dollars until a year-specific table is wired in."
+    vehicle_operating_cost_usd_per_mile:
+      source: "GSA privately owned vehicle mileage reimbursement rate"
+      url: "https://www.gsa.gov/travel/plan-book/transportation-airfare-pov-etc/privately-owned-vehicle-pov-mileage-reimbursement-rates"
+      note: "Uses the government reimbursement proxy as a conservative operating-cost placeholder."
+    external_highway_use_cost_usd_per_vmt:
+      source: "USDOT Benefit-Cost Analysis Guidance external highway-use costs"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+      note: "Sketch-level non-operating external cost per avoided vehicle-mile."
+    emissions_usd_per_ton.co2:
+      source: "USDOT Benefit-Cost Analysis Guidance emissions valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    emissions_usd_per_ton.nox:
+      source: "USDOT Benefit-Cost Analysis Guidance emissions valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    emissions_usd_per_ton.pm25:
+      source: "USDOT Benefit-Cost Analysis Guidance emissions valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    crash_cost_usd.fatal:
+      source: "USDOT Benefit-Cost Analysis Guidance safety valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    crash_cost_usd.injury:
+      source: "USDOT Benefit-Cost Analysis Guidance safety valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    crash_cost_usd.pdo:
+      source: "USDOT Benefit-Cost Analysis Guidance safety valuation"
+      url: "https://www.transportation.gov/office-policy/transportation-policy/benefit-cost-analysis-guidance"
+    vehicle_damage_usd_per_vmt:
+      source: "FHWA vehicle operating cost and pavement-condition benefit-cost practice"
+      url: "https://www.fhwa.dot.gov/ipd/value_capture/defined/value_capture_resources/benefit_cost_analysis.aspx"
+      note: "Vehicle damage coefficient remains a local calibration assumption and should be replaced by Chicago pavement-condition evidence."
+    interventions.pothole.repair_cost_usd_per_pothole:
+      source: "Municipal pothole-patching cost estimate (CDOT does not publish a per-pothole figure)"
+      url: "https://homeguide.com/costs/asphalt-repair-cost"
+      note: "Chicago CDOT does not publish per-pothole cost. Contractor asphalt patch runs $100-$300 (HomeGuide 2026); municipal in-house crews are cheaper. $100 used as a fully-loaded municipal estimate; a FOIA/bid-tab figure should replace it for policy use."
+    interventions.pothole.extra_damage_usd_per_vmt:
+      source: "TRIP urban road-condition vehicle operating cost analysis"
+      url: "https://infrastructurereportcard.org/trip-releases-new-report-on-rough-urban-roads-motorists-pay-130-billion-annually-in-vehicle-operating-costs/"
+      note: "TRIP: Chicago drivers pay ~$827/yr in extra vehicle operating cost from rough roads (~$0.057/mi fleet-average). $0.10/mi is a mid-range premium for a specifically pothole-degraded link, on top of the $0.07/mi baseline vehicle_damage_usd_per_vmt."
+    interventions.bike_lane.benefits.facility_value_usd_per_cycling_mile:
+      source: "NCHRP Report 552 bicycle-facility benefit-cost framework"
+      url: "https://onlinepubs.trb.org/onlinepubs/nchrp/nchrp_rpt_552.pdf"
+      note: "User benefit proxy for improved cycling facility quality."
+    interventions.bike_lane.benefits.health_benefit_usd_per_induced_trip:
+      source: "NCHRP Report 552 bicycle-facility benefit-cost framework"
+      url: "https://onlinepubs.trb.org/onlinepubs/nchrp/nchrp_rpt_552.pdf"
+      note: "Applies only to induced trips from inactive adults through configured shares."
+    interventions.bike_lane.benefits.capital_cost_usd_per_lane_mile:
+      source: "Chicago CDOT concrete protected bike lane program cost"
+      url: "https://news.wttw.com/2022/06/29/city-announces-plan-upgrade-all-protected-bike-lanes-concrete-amid-outcry-over-cyclist"
+      note: "~$7M for ~25 mi of concrete-protected bike lanes (2022 CDOT program) ≈ $280k per lane-mile; replace with project bid tabs for policy-grade estimates."
+    interventions.bike_lane.benefits.existing_daily_bike_trips:
+      source: "Chicago CDOT Bicycle Count Study"
+      url: "https://www.chicago.gov/city/en/depts/cdot/provdrs/bike/news/2011/feb/cdot_bicycle_countstudy.html"
+      note: "Milwaukee Ave is Chicago busiest cycling street; CDOT counts exceed 3,000 riders/day at the peak location. ~2,500/day is a defensible corridor estimate for the Logan Square segment."
+    interventions.bike_lane.benefits.annual_bicycle_crashes_baseline:
+      source: "Chicago Data Portal Traffic Crashes (dataset 85ca-t3if)"
+      url: "https://data.cityofchicago.org/Transportation/Traffic-Crashes-Crashes/85ca-t3if"
+      note: "76 crashes with first_crash_type=PEDALCYCLIST on Logan Square Milwaukee Ave segment (lat 41.912-41.928, lon -87.746 to -87.695) from 2019-01-01 to 2026, ≈10/yr. Likely underreported."
+    interventions.bike_lane.benefits.separated_lane_crash_reduction_factor:
+      source: "FHWA-HRT-23-025 Developing CMFs for Separated Bicycle Lanes"
+      url: "https://highways.dot.gov/media/33856"
+      note: "Separated/protected bike lanes reduce bicycle crashes ~41-53%; 0.45 used as a mid-range, somewhat conservative value."
 
 interventions:
   pothole:
+    # Treat currently active reports as relevant, plus recently-created reports
+    # that may still represent rough pavement conditions. This avoids using all
+    # historical 311 pothole records as if they were present today.
+    active_statuses: ["Open"]
+    recent_days: 365
+    as_of_date: "2026-06-30"
     # Each pothole on a link slows it; freespeed *= (1 - min(max_penalty,
     # speed_penalty_per_pothole * n_potholes)). Fixing restores full freespeed.
     speed_penalty_per_pothole: 0.05
     max_penalty: 0.50
-    repair_cost_usd_per_pothole: 200.0 # PLACEHOLDER (Chicago CDOT order-of-magnitude)
+    repair_cost_usd_per_pothole: 100.0 # fully-loaded municipal estimate
     # extra vehicle damage per VMT driven over a pothole-degraded link (on top of
     # the baseline vehicle_damage_usd_per_vmt), avoided once fixed.
-    extra_damage_usd_per_vmt: 0.15 # PLACEHOLDER
+    extra_damage_usd_per_vmt: 0.10 # TRIP-anchored pothole-degraded link premium
     analysis_period_years: 1
+    annual_days: 300 # days/year the benefit accrues
     discount_rate: 0.03
+  bike_lane:
+    enabled: true
+    name: "Milwaukee Ave bike lane"
+    # Approximate Milwaukee Ave corridor through Logan Square, in lon/lat.
+    corridor_lonlat:
+      - [-87.7440, 41.9256]
+      - [-87.7355, 41.9236]
+      - [-87.7240, 41.9207]
+      - [-87.7105, 41.9172]
+      - [-87.6975, 41.9140]
+    buffer_m: 45
+    min_link_capacity: 600
+    car_capacity_factor: 0.75
+    car_freespeed_factor: 0.95
+    benefits:
+      enabled: true
+      # Sketch-level placeholders until local counts or survey data are added.
+      existing_daily_bike_trips: 2500 # CDOT counts exceed 3,000 riders/day at Milwaukee Ave peak; ~2,500/day corridor estimate.
+      induced_daily_bike_trips: 350
+      average_bike_trip_miles: 2.38
+      max_benefit_miles_per_trip: 2.38
+      facility_direction_factor: 2.0
+      facility_value_usd_per_cycling_mile: 2.09
+      health_age_share: 0.59
+      induced_from_inactive_share: 0.89
+      health_benefit_usd_per_induced_trip: 7.45
+      accessibility_benefit_usd_per_induced_trip: 0.50
+      auto_mode_shift_share: 0.35
+      auto_vehicle_occupancy: 1.3
+      capital_cost_usd_per_lane_mile: 280000
+      analysis_period_years: 10
+      discount_rate: 0.03
+      annual_days: 300
+      annual_bicycle_crashes_baseline: 10.0 # ~76 pedalcyclist crashes on Logan Square Milwaukee Ave since 2019 (Chicago Data Portal 85ca-t3if) ≈ 10/yr.
+      separated_lane_crash_reduction_factor: 0.45 # FHWA-HRT-23-025: separated bike lanes reduce bicycle crashes 41-53%; 0.45 mid-range.
+  generic_edit_layers:
+    enabled: false
+    layers:
+      - name: "bike_lane_tuned"
+        enabled: false
+        type: "link_csv"
+        source_csv: "data/processed/sim_tuning_recommendations_bike_lane.csv"
+        input_network: "network_bike_lane.xml.gz"
+        output_network: "network_bike_lane_tuned.xml.gz"
+        output_directory: "output_bike_lane_tuned"
+      # REVIEWED + REJECTED (Step 3): 7 modest capacity/freespeed bumps on top
+      # stuck links did NOT improve health (completion 95.2%->95.1%, stuck
+      # 1741->1782; #1 stuck link unchanged despite 1.25x capacity). Root cause
+      # is spillback/storage/deadlock dynamics, not raw link capacity. Kept
+      # disabled and documented; do not re-enable without a different fix.
+      - name: fixed_tuned
+        enabled: false
+        type: link_csv
+        source_csv: data/processed/sim_tuning_recommendations_fixed_reviewed.csv
+        input_network: network.xml.gz
+        output_network: network_fixed_tuned.xml.gz
+        output_directory: output_fixed_tuned
+
+needs_index:
+  enabled: true
+  snap_distance_m: 40
+  normalization: percentile
+  top_n: 25
+  crash:
+    lookback_years: 5
+    severity_weights:
+      fatal: 5.0
+      incapacitating: 4.0
+      non_incapacitating: 2.0
+      other: 1.0
+  weights:
+    safety: 0.45
+    pavement: 0.25
+    congestion: 0.30

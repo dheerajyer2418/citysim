@@ -1,0 +1,92 @@
+{
+  "annual_benefits_usd": {
+    "total": 146399572.03686234,
+    "travel_time": 145642092.91667622,
+    "vehicle_damage": 757479.120186113
+  },
+  "bca_reliable": false,
+  "benefit_cost_ratio": 4952.456684038509,
+  "cost_usd": 28700.0,
+  "daily_benefits_usd": {
+    "total": 487998.5734562078,
+    "travel_time": 485473.6430555874,
+    "vehicle_damage": 2524.930400620377
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 142135506.8319052
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_baseline",
+    "daily_vht_baseline": 198365.29444444636,
+    "daily_vht_fixed": 175785.12500000044,
+    "daily_vmt_baseline": 949844.0979678619,
+    "daily_vmt_fixed": 943376.7547522455,
+    "daily_vmt_pothole_links_baseline": 25249.30400620377,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 287
+  },
+  "net_benefit_usd": 142106806.8319052,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 1870.0,
+    "mean_trip_minutes_delta": 3.667636219567278,
+    "median_trip_minutes_delta": 0.09999999999999964,
+    "stuck_trips_delta_scaled": -1870.0,
+    "vht_delta_hours": 22580.169444445928,
+    "vmt_delta_miles": 6467.34321561642
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 35413.0,
+      "arrivals_scaled": 354130.0,
+      "completed_trips_sample": 35413.0,
+      "completed_trips_scaled": 354130.0,
+      "completed_vmt_scaled": 949953.8756164002,
+      "completion_rate": 0.9813773035887488,
+      "departures_sample": 36085.0,
+      "departures_scaled": 360850.0,
+      "iteration": 10,
+      "mean_trip_minutes": 33.608894097271246,
+      "median_trip_minutes": 9.1,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_baseline",
+      "stuck_rate": 0.01862269641125121,
+      "stuck_sample": 672.0,
+      "stuck_scaled": 6720.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 198365.29444444636,
+      "vmt": 949844.0979678619
+    },
+    "fixed": {
+      "arrivals_sample": 35226.0,
+      "arrivals_scaled": 352260.0,
+      "completed_trips_sample": 35226.0,
+      "completed_trips_scaled": 352260.0,
+      "completed_vmt_scaled": 943486.0415175376,
+      "completion_rate": 0.9761950949147845,
+      "departures_sample": 36085.0,
+      "departures_scaled": 360850.0,
+      "iteration": 10,
+      "mean_trip_minutes": 29.94125787770397,
+      "median_trip_minutes": 9.0,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_fixed",
+      "stuck_rate": 0.023804905085215464,
+      "stuck_sample": 859.0,
+      "stuck_scaled": 8590.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 175785.12500000044,
+      "vmt": 943376.7547522455
+    },
+    "warnings": [
+      "baseline has 672 sampled stuck/lost trips.",
+      "fixed has 859 sampled stuck/lost trips.",
+      "paired scenario completion rates differ by 0.5%; travel-time BCA may be dominated by model-health noise.",
+      "paired scenario stuck/lost trips differ by 187 sampled agents; compare travel-time monetization cautiously."
+    ]
+  }
+}

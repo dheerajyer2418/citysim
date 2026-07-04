@@ -22,6 +22,7 @@ class BoundaryConfig:
 class ScenarioConfig:
     sample_fraction: float
     iterations: int
+    departure_jitter_std_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,8 @@ class FhwaCoefficients:
     emissions_usd_per_ton: dict[str, float]
     crash_cost_usd: dict[str, float]
     vehicle_damage_usd_per_vmt: float
+    vehicle_operating_cost_usd_per_mile: float = 0.0
+    external_highway_use_cost_usd_per_vmt: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,7 @@ class CitySimConfig:
     sources: dict[str, Any]
     scenario: ScenarioConfig
     fhwa_coefficients: FhwaCoefficients
+    coefficient_sources: dict[str, Any]
     interventions: dict[str, Any]
 
     @property
@@ -68,9 +72,41 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _validate_coefficient_sources(data: dict[str, Any]) -> None:
+    sources = data.get("coefficient_sources", {})
+    if not sources or not sources.get("required", False):
+        return
+    required = [
+        "value_of_time_usd_per_hr",
+        "vehicle_operating_cost_usd_per_mile",
+        "external_highway_use_cost_usd_per_vmt",
+        "vehicle_damage_usd_per_vmt",
+        "emissions_usd_per_ton.co2",
+        "emissions_usd_per_ton.nox",
+        "emissions_usd_per_ton.pm25",
+        "crash_cost_usd.fatal",
+        "crash_cost_usd.injury",
+        "crash_cost_usd.pdo",
+        "interventions.pothole.repair_cost_usd_per_pothole",
+        "interventions.pothole.extra_damage_usd_per_vmt",
+        "interventions.bike_lane.benefits.facility_value_usd_per_cycling_mile",
+        "interventions.bike_lane.benefits.health_benefit_usd_per_induced_trip",
+        "interventions.bike_lane.benefits.capital_cost_usd_per_lane_mile",
+    ]
+    values = sources.get("values", {})
+    missing = [
+        key
+        for key in required
+        if not isinstance(values.get(key), dict) or not values[key].get("source") or not values[key].get("url")
+    ]
+    if missing:
+        raise ValueError(f"Missing coefficient source metadata for: {', '.join(missing)}")
+
+
 def load_config(path: str | Path = DEFAULT_PARAMS_PATH) -> CitySimConfig:
     params_path = Path(path)
     data = _read_yaml(params_path)
+    _validate_coefficient_sources(data)
 
     boundary = data["boundary"]
     scenario = data["scenario"]
@@ -88,12 +124,16 @@ def load_config(path: str | Path = DEFAULT_PARAMS_PATH) -> CitySimConfig:
         scenario=ScenarioConfig(
             sample_fraction=float(scenario["sample_fraction"]),
             iterations=int(scenario["iterations"]),
+            departure_jitter_std_seconds=float(scenario.get("departure_jitter_std_seconds", 0.0)),
         ),
         fhwa_coefficients=FhwaCoefficients(
             value_of_time_usd_per_hr=float(fhwa["value_of_time_usd_per_hr"]),
             emissions_usd_per_ton=dict(fhwa["emissions_usd_per_ton"]),
             crash_cost_usd=dict(fhwa["crash_cost_usd"]),
             vehicle_damage_usd_per_vmt=float(fhwa["vehicle_damage_usd_per_vmt"]),
+            vehicle_operating_cost_usd_per_mile=float(fhwa.get("vehicle_operating_cost_usd_per_mile", 0.0)),
+            external_highway_use_cost_usd_per_vmt=float(fhwa.get("external_highway_use_cost_usd_per_vmt", 0.0)),
         ),
+        coefficient_sources=dict(data.get("coefficient_sources", {})),
         interventions=dict(data.get("interventions", {})),
     )

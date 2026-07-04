@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import csv
+import gzip
 from collections import Counter
 from dataclasses import dataclass
 from io import TextIOWrapper
 from pathlib import Path
 from typing import Iterable, Iterator
+
+from lxml import etree
 
 from pipeline.crosswalk import (
     build_taz_link_crosswalk,
@@ -15,14 +18,16 @@ from pipeline.crosswalk import (
     load_links_from_gpkg,
     sample_activity_coord,
 )
-from pipeline.plans_io import PersonPlan, stochastic_count, write_population
+from pipeline.plans_io import PersonPlan, format_time, stochastic_count, write_population
 
 
 PLANS_OUTPUT = "plans.xml.gz"
+PT_PLANS_OUTPUT = "plans_pt.xml.gz"
 ROSTER_ZIP = "c24q4_100.zip"
 ROSTER_CACHE = "cmap_internal_trips.csv"
 ROSTER_FIELDS = ("purpose", "mode", "o_zone", "d_zone", "a_zone", "timeperiod", "trips")
 RNG_SEED = 42
+DEFAULT_TRANSIT_MODES = {"4", "5", "6"}
 
 PURPOSE_ACTIVITY_TYPES = {
     "HBWH": "work",
@@ -45,9 +50,27 @@ class RosterBuildSummary:
     timeperiod_trips: dict[str, int]
 
 
+@dataclass(frozen=True)
+class PtRosterBuildSummary:
+    rows_scanned: int
+    internal_transit_trips: int
+    car_persons: int
+    pt_persons: int
+    total_persons: int
+    transit_modes: tuple[str, ...]
+
+
 def is_internal_auto_trip(row: dict[str, str], taz_ids: set[str], auto_modes: set[str]) -> bool:
     return (
         str(row.get("mode", "")) in auto_modes
+        and str(row.get("o_zone", "")) in taz_ids
+        and str(row.get("d_zone", "")) in taz_ids
+    )
+
+
+def is_internal_transit_trip(row: dict[str, str], taz_ids: set[str], transit_modes: set[str]) -> bool:
+    return (
+        str(row.get("mode", "")) in transit_modes
         and str(row.get("o_zone", "")) in taz_ids
         and str(row.get("d_zone", "")) in taz_ids
     )
@@ -63,12 +86,33 @@ def iter_internal_auto_rows(
             yield {field: str(row.get(field, "")) for field in ROSTER_FIELDS}
 
 
+def iter_internal_transit_rows(
+    rows: Iterable[dict[str, str]],
+    taz_ids: set[str],
+    transit_modes: set[str],
+) -> Iterator[dict[str, str]]:
+    for row in rows:
+        if is_internal_transit_trip(row, taz_ids, transit_modes):
+            yield {field: str(row.get(field, "")) for field in ROSTER_FIELDS}
+
+
 def sample_departure_seconds(timeperiod: str, tod_windows: dict[str, list[int]], rng) -> float:
     if timeperiod not in tod_windows:
         raise KeyError(f"Unknown CMAP timeperiod {timeperiod!r}")
     start, end = tod_windows[timeperiod]
     sampled = float(rng.uniform(float(start), float(end)))
     return sampled % 86400.0
+
+
+def smooth_departure_seconds(departure: float, jitter_std_seconds: float, rng) -> float:
+    """Apply deterministic zero-mean departure jitter and wrap within one day."""
+    if jitter_std_seconds <= 0.0:
+        return float(departure) % 86400.0
+    if hasattr(rng, "normal"):
+        jitter = float(rng.normal(0.0, float(jitter_std_seconds)))
+    else:
+        jitter = float(rng.gauss(0.0, float(jitter_std_seconds)))
+    return (float(departure) + jitter) % 86400.0
 
 
 def activity_types_for_trip(purpose: str, o_zone: str, d_zone: str, a_zone: str) -> tuple[str, str]:
@@ -95,6 +139,7 @@ def generate_person_plans(
     sample_fraction: float,
     tod_windows: dict[str, list[int]],
     rng,
+    departure_jitter_std_seconds: float = 0.0,
 ) -> Iterator[PersonPlan]:
     person_number = 0
     for row in rows:
@@ -106,6 +151,7 @@ def generate_person_plans(
         count = stochastic_count(trips * sample_fraction, rng)
         for _ in range(count):
             departure = sample_departure_seconds(timeperiod, tod_windows, rng)
+            departure = smooth_departure_seconds(departure, departure_jitter_std_seconds, rng)
             origin_type, dest_type = activity_types_for_trip(
                 purpose,
                 str(row["o_zone"]),
@@ -122,6 +168,23 @@ def generate_person_plans(
                 ],
             )
             person_number += 1
+
+
+def generate_transit_person_plans(
+    rows: Iterable[dict[str, str]],
+    sample_fraction: float,
+    tod_windows: dict[str, list[int]],
+    rng,
+    departure_jitter_std_seconds: float = 0.0,
+) -> Iterator[PersonPlan]:
+    for person_id, activities in generate_person_plans(
+        rows,
+        sample_fraction,
+        tod_windows,
+        rng,
+        departure_jitter_std_seconds=departure_jitter_std_seconds,
+    ):
+        yield (f"pt_{person_id}", activities, "pt")
 
 
 def _open_roster_reader(zip_path: Path, member: str) -> Iterator[dict[str, str]]:
@@ -194,6 +257,122 @@ def _make_summary_from_cache(rows: Iterable[dict[str, str]], agents_written: int
     )
 
 
+def _write_combined_pt_population(car_plans_path: Path, pt_persons: Iterable[PersonPlan], output_path: Path) -> tuple[int, int]:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    car_persons = 0
+    pt_persons_written = 0
+    with gzip.open(output_path, "wb") as handle:
+        handle.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
+        handle.write(b'<!DOCTYPE population SYSTEM "http://www.matsim.org/files/dtd/population_v6.dtd">\n')
+        with etree.xmlfile(handle, encoding="UTF-8") as xf:
+            with xf.element("population"):
+                with gzip.open(car_plans_path, "rb") as car_handle:
+                    for _, element in etree.iterparse(car_handle, events=("end",), tag="person"):
+                        xf.write(element)
+                        car_persons += 1
+                        element.clear()
+                for person in pt_persons:
+                    if len(person) == 2:
+                        person_id, activities_iter = person
+                        leg_mode = "car"
+                    else:
+                        person_id, activities_iter, leg_mode = person
+                    activities = list(activities_iter)
+                    with xf.element("person", id=str(person_id)):
+                        with xf.element("plan", selected="yes"):
+                            for index, (act_type, x, y, end_time) in enumerate(activities):
+                                attributes = {
+                                    "type": str(act_type),
+                                    "x": f"{float(x):.3f}",
+                                    "y": f"{float(y):.3f}",
+                                }
+                                if end_time is not None:
+                                    attributes["end_time"] = format_time(float(end_time))
+                                xf.write(etree.Element("activity", **attributes))
+                                if index < len(activities) - 1:
+                                    xf.write(etree.Element("leg", mode=str(leg_mode)))
+                    pt_persons_written += 1
+    return car_persons, pt_persons_written
+
+
+def build_pt_plans(cfg) -> PtRosterBuildSummary:
+    """Build transit-only scenario plans: existing car persons plus new PT riders."""
+    import geopandas as gpd
+    import numpy as np
+
+    taz_path = cfg.data_interim / "logan_square_taz.gpkg"
+    links_path = cfg.data_interim / "network_links.gpkg"
+    for path in (taz_path, links_path):
+        if not path.exists():
+            raise FileNotFoundError(f"Missing required prior-stage artifact: {path}")
+
+    car_plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
+    if not car_plans_path.exists():
+        raise FileNotFoundError(f"Missing car-only plans file: {car_plans_path}")
+
+    taz_gdf = gpd.read_file(taz_path).to_crs(cfg.crs)
+    links = load_links_from_gpkg(links_path)
+    build_taz_link_crosswalk(taz_gdf, links)
+    taz_ids = _taz_ids_from_table(taz_gdf)
+
+    roster_cfg = cfg.sources["cmap"]["roster"]
+    member = str(roster_cfg["member"])
+    transit_modes = {str(mode) for mode in roster_cfg.get("transit_modes", sorted(DEFAULT_TRANSIT_MODES))}
+    tod_windows = roster_cfg["tod_windows"]
+    zip_path = cfg.data_raw / ROSTER_ZIP
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Missing CMAP roster zip: {zip_path}")
+
+    rows_scanned = 0
+    internal_transit_trips = 0
+
+    def filtered_rows() -> Iterator[dict[str, str]]:
+        nonlocal rows_scanned, internal_transit_trips
+        for row in _open_roster_reader(zip_path, member):
+            rows_scanned += 1
+            if not is_internal_transit_trip(row, taz_ids, transit_modes):
+                continue
+            slim = {field: str(row.get(field, "")) for field in ROSTER_FIELDS}
+            trips = _parse_positive_trips(slim["trips"])
+            if trips <= 0:
+                continue
+            internal_transit_trips += trips
+            yield slim
+
+    rng = np.random.default_rng(RNG_SEED)
+    pt_plans = generate_transit_person_plans(
+        filtered_rows(),
+        cfg.scenario.sample_fraction,
+        tod_windows,
+        rng,
+        departure_jitter_std_seconds=cfg.scenario.departure_jitter_std_seconds,
+    )
+    output_path = cfg.project_root / "scenarios" / "logan_square" / PT_PLANS_OUTPUT
+    car_persons, pt_persons = _write_combined_pt_population(car_plans_path, pt_plans, output_path)
+    return PtRosterBuildSummary(
+        rows_scanned=rows_scanned,
+        internal_transit_trips=internal_transit_trips,
+        car_persons=car_persons,
+        pt_persons=pt_persons,
+        total_persons=car_persons + pt_persons,
+        transit_modes=tuple(sorted(transit_modes)),
+    )
+
+
+def run_pt(cfg) -> None:
+    """INPUT: car-only plans and CMAP roster. OUTPUT: MATSim plans_pt.xml.gz for transit scenario only."""
+    summary = build_pt_plans(cfg)
+    print(
+        "s2pt complete: "
+        f"rows_scanned={summary.rows_scanned}; "
+        f"transit_modes={list(summary.transit_modes)}; "
+        f"internal_transit_trips={summary.internal_transit_trips}; "
+        f"car_persons={summary.car_persons}; "
+        f"pt_persons={summary.pt_persons}; "
+        f"total_persons={summary.total_persons}"
+    )
+
+
 def run(cfg) -> None:
     """INPUT: CMAP c24q4 trip roster, Logan Square TAZ, and S1 links. OUTPUT: MATSim plans.xml.gz."""
     import geopandas as gpd
@@ -240,6 +419,7 @@ def run(cfg) -> None:
         cfg.scenario.sample_fraction,
         tod_windows,
         rng,
+        departure_jitter_std_seconds=cfg.scenario.departure_jitter_std_seconds,
     )
     agents_written = 0
 
@@ -268,6 +448,7 @@ def run(cfg) -> None:
         f"rows_scanned={summary.rows_scanned}; "
         f"internal_internal_auto_trips={summary.internal_auto_trips}; "
         f"agents_written={summary.agents_written}; "
+        f"departure_jitter_std_seconds={cfg.scenario.departure_jitter_std_seconds:g}; "
         f"purpose_trips={summary.purpose_trips}; "
         f"timeperiod_trips={summary.timeperiod_trips}"
     )

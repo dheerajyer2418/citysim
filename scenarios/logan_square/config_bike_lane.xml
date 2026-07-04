@@ -7,7 +7,7 @@
   </module>
 
   <module name="network">
-    <param name="inputNetworkFile" value="network_potholes.xml.gz"/>
+    <param name="inputNetworkFile" value="network_bike_lane.xml.gz"/>
   </module>
 
   <module name="plans">
@@ -15,7 +15,7 @@
   </module>
 
   <module name="controler">
-    <param name="outputDirectory" value="output_baseline"/>
+    <param name="outputDirectory" value="output_bike_lane"/>
     <param name="firstIteration" value="0"/>
     <!-- equilibration for validation; replanning spreads traffic & reduces stuck -->
     <param name="lastIteration" value="10"/>

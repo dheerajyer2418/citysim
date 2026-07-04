@@ -19,6 +19,7 @@ from pipeline.cmap_demand import (
     activity_types_for_trip,
     generate_person_plans,
     sample_departure_seconds,
+    smooth_departure_seconds,
 )
 from pipeline.crosswalk import (
     LinkRecord,
@@ -33,7 +34,10 @@ from pipeline.plans_io import PersonPlan, stochastic_count, write_population
 CORDON_CACHE = "cmap_cordon_trips.csv"
 GATEWAY_CACHE = "zone_gateways.csv"
 INTERNAL_CACHE = "cmap_internal_trips.csv"
-GATEWAY_FIELDS = ("external_zone", "node_id", "x", "y")
+GATEWAY_FIELDS = ("external_zone", "rank", "link_id", "x", "y", "capacity", "weight", "boundary_distance_m")
+DEFAULT_GATEWAY_K_NEAREST = 5
+DEFAULT_GATEWAY_MIN_CAPACITY = 1000.0
+DEFAULT_GATEWAY_BOUNDARY_BAND_M = 300.0
 
 
 @dataclass(frozen=True)
@@ -41,6 +45,16 @@ class NetworkNode:
     node_id: str
     x: float
     y: float
+
+
+@dataclass(frozen=True)
+class GatewayChoice:
+    link_id: str
+    x: float
+    y: float
+    capacity: float
+    weight: float
+    boundary_distance_m: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -159,31 +173,47 @@ def _write_cordon_cache(
     return cordon_trips
 
 
-def _read_gateway_cache(cache_path: Path) -> dict[str, NetworkNode]:
-    gateways: dict[str, NetworkNode] = {}
+def _read_gateway_cache(cache_path: Path) -> dict[str, list[GatewayChoice]]:
+    gateways: dict[str, list[GatewayChoice]] = {}
     with cache_path.open("r", encoding="utf-8", newline="") as handle:
-        for row in csv.DictReader(handle):
+        reader = csv.DictReader(handle)
+        if set(reader.fieldnames or ()) != set(GATEWAY_FIELDS):
+            return {}
+        for row in reader:
             zone = str(row["external_zone"])
-            gateways[zone] = NetworkNode(str(row["node_id"]), float(row["x"]), float(row["y"]))
+            gateways.setdefault(zone, []).append(
+                GatewayChoice(
+                    link_id=str(row["link_id"]),
+                    x=float(row["x"]),
+                    y=float(row["y"]),
+                    capacity=float(row["capacity"]),
+                    weight=float(row["weight"]),
+                    boundary_distance_m=float(row["boundary_distance_m"]),
+                )
+            )
     return gateways
 
 
-def _write_gateway_cache(cache_path: Path, gateways: dict[str, NetworkNode]) -> None:
+def _write_gateway_cache(cache_path: Path, gateways: dict[str, list[GatewayChoice]]) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = cache_path.with_name(f"{cache_path.name}.tmp")
     with temp_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=GATEWAY_FIELDS)
         writer.writeheader()
         for zone in sorted(gateways, key=lambda value: (len(value), value)):
-            node = gateways[zone]
-            writer.writerow(
-                {
-                    "external_zone": zone,
-                    "node_id": node.node_id,
-                    "x": f"{node.x:.3f}",
-                    "y": f"{node.y:.3f}",
-                }
-            )
+            for rank, gateway in enumerate(gateways[zone], start=1):
+                writer.writerow(
+                    {
+                        "external_zone": zone,
+                        "rank": rank,
+                        "link_id": gateway.link_id,
+                        "x": f"{gateway.x:.3f}",
+                        "y": f"{gateway.y:.3f}",
+                        "capacity": f"{gateway.capacity:.3f}",
+                        "weight": f"{gateway.weight:.6f}",
+                        "boundary_distance_m": f"{gateway.boundary_distance_m:.3f}",
+                    }
+                )
     temp_path.replace(cache_path)
 
 
@@ -196,13 +226,105 @@ def _external_zones_from_rows(rows: Iterable[dict[str, str]], taz_ids: set[str])
     return {external_zone_for_cordon_row(row, taz_ids) for row in rows}
 
 
+def gateway_candidate_links(
+    links: Iterable[LinkRecord],
+    min_capacity: float,
+    boundary_geometry=None,
+    boundary_band_m: float | None = None,
+) -> list[LinkRecord]:
+    candidates = [
+        link
+        for link in links
+        if not link.is_connector
+        and not getattr(link.geometry, "is_empty", True)
+        and float(getattr(link, "capacity", 0.0) or 0.0) >= min_capacity
+    ]
+    if boundary_geometry is not None and boundary_band_m is not None:
+        perimeter_candidates = [
+            link
+            for link in candidates
+            if float(link.geometry.distance(boundary_geometry)) <= float(boundary_band_m)
+        ]
+        if perimeter_candidates:
+            return perimeter_candidates
+    if candidates:
+        return candidates
+    return [link for link in links if not link.is_connector and not getattr(link.geometry, "is_empty", True)]
+
+
+def gateway_choices_for_zone(
+    zone_point,
+    candidate_links: Iterable[LinkRecord],
+    k_nearest: int,
+) -> list[GatewayChoice]:
+    ranked = sorted(
+        candidate_links,
+        key=lambda link: (
+            link.geometry.distance(zone_point),
+            -float(getattr(link, "capacity", 0.0) or 0.0),
+            link.link_id,
+        ),
+    )[: max(1, int(k_nearest))]
+    choices: list[GatewayChoice] = []
+    total_capacity = sum(max(float(getattr(link, "capacity", 0.0) or 0.0), 1.0) for link in ranked)
+    for link in ranked:
+        snapped = link.geometry.interpolate(link.geometry.project(zone_point))
+        capacity = max(float(getattr(link, "capacity", 0.0) or 0.0), 1.0)
+        choices.append(
+            GatewayChoice(
+                link_id=link.link_id,
+                x=float(snapped.x),
+                y=float(snapped.y),
+                capacity=capacity,
+                weight=capacity / total_capacity if total_capacity > 0.0 else 1.0 / len(ranked),
+                boundary_distance_m=0.0,
+            )
+        )
+    return choices
+
+
+def attach_boundary_distances(choices: list[GatewayChoice], links_by_id: dict[str, LinkRecord], boundary_geometry) -> list[GatewayChoice]:
+    return [
+        GatewayChoice(
+            link_id=choice.link_id,
+            x=choice.x,
+            y=choice.y,
+            capacity=choice.capacity,
+            weight=choice.weight,
+            boundary_distance_m=float(links_by_id[choice.link_id].geometry.distance(boundary_geometry)),
+        )
+        for choice in choices
+    ]
+
+
+def select_gateway(gateway_entry: NetworkNode | GatewayChoice | list[GatewayChoice], rng) -> NetworkNode | GatewayChoice:
+    if isinstance(gateway_entry, (NetworkNode, GatewayChoice)):
+        return gateway_entry
+    if not gateway_entry:
+        raise ValueError("Cannot select from an empty gateway choice list.")
+    total_weight = sum(max(choice.weight, 0.0) for choice in gateway_entry)
+    if total_weight <= 0.0:
+        return gateway_entry[0]
+    threshold = rng.random() * total_weight
+    cumulative = 0.0
+    for choice in gateway_entry:
+        cumulative += max(choice.weight, 0.0)
+        if cumulative >= threshold:
+            return choice
+    return gateway_entry[-1]
+
+
 def _load_or_build_gateways(
     cache_path: Path,
     zones_path: Path,
     external_zones: set[str],
-    nodes: list[NetworkNode],
+    links: list[LinkRecord],
     crs: str,
-) -> dict[str, NetworkNode]:
+    k_nearest: int = DEFAULT_GATEWAY_K_NEAREST,
+    min_capacity: float = DEFAULT_GATEWAY_MIN_CAPACITY,
+    boundary_geometry=None,
+    boundary_band_m: float = DEFAULT_GATEWAY_BOUNDARY_BAND_M,
+) -> dict[str, list[GatewayChoice]]:
     if cache_path.exists():
         cached = _read_gateway_cache(cache_path)
         if external_zones.issubset(cached):
@@ -220,7 +342,16 @@ def _load_or_build_gateways(
         raise ValueError(f"Missing external TAZ polygons for zones: {missing_zones[:10]}")
 
     points_by_zone = {str(row["zone17"]): row.geometry.centroid for _, row in needed.iterrows()}
-    gateways = _nearest_nodes_by_strtree(nodes, points_by_zone)
+    candidates = gateway_candidate_links(links, min_capacity, boundary_geometry, boundary_band_m)
+    if not candidates:
+        raise ValueError("Cannot build gateways without non-connector network links.")
+    links_by_id = {link.link_id: link for link in candidates}
+    gateways = {
+        zone: attach_boundary_distances(gateway_choices_for_zone(point, candidates, k_nearest), links_by_id, boundary_geometry)
+        if boundary_geometry is not None
+        else gateway_choices_for_zone(point, candidates, k_nearest)
+        for zone, point in points_by_zone.items()
+    }
     _write_gateway_cache(cache_path, gateways)
     return gateways
 
@@ -228,12 +359,13 @@ def _load_or_build_gateways(
 def generate_cordon_person_plans(
     rows: Iterable[dict[str, str]],
     taz_ids: set[str],
-    gateways: dict[str, NetworkNode],
+    gateways: dict[str, NetworkNode | GatewayChoice | list[GatewayChoice]],
     sample_fraction: float,
     tod_windows: dict[str, list[int]],
     rng,
     gateway_activity_type: str = "gateway",
     coord_sampler: Callable[[str], tuple[float, float]] = sample_activity_coord,
+    departure_jitter_std_seconds: float = 0.0,
 ) -> Iterator[tuple[PersonPlan, str]]:
     person_number = 0
     for row in rows:
@@ -243,6 +375,7 @@ def generate_cordon_person_plans(
         count = stochastic_count(trips * sample_fraction, rng)
         for _ in range(count):
             departure = sample_departure_seconds(str(row["timeperiod"]), tod_windows, rng)
+            departure = smooth_departure_seconds(departure, departure_jitter_std_seconds, rng)
             origin_type, dest_type = activity_types_for_trip(
                 str(row["purpose"]),
                 str(row["o_zone"]),
@@ -253,14 +386,14 @@ def generate_cordon_person_plans(
             d_zone = str(row["d_zone"])
             if o_zone in taz_ids:
                 internal_x, internal_y = coord_sampler(o_zone)
-                gateway = gateways[d_zone]
+                gateway = select_gateway(gateways[d_zone], rng)
                 direction = "out"
                 activities = [
                     (origin_type, internal_x, internal_y, departure),
                     (gateway_activity_type, gateway.x, gateway.y, None),
                 ]
             else:
-                gateway = gateways[o_zone]
+                gateway = select_gateway(gateways[o_zone], rng)
                 internal_x, internal_y = coord_sampler(d_zone)
                 direction = "in"
                 activities = [
@@ -280,7 +413,8 @@ def run(cfg) -> None:
     links_path = cfg.data_interim / "network_links.gpkg"
     zones_path = cfg.data_raw / "cmap_taz_zones17.geojson"
     internal_cache_path = cfg.data_interim / INTERNAL_CACHE
-    for path in (taz_path, links_path, zones_path, internal_cache_path):
+    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
+    for path in (taz_path, links_path, zones_path, internal_cache_path, boundary_path):
         if not path.exists():
             raise FileNotFoundError(f"Missing required artifact: {path}")
 
@@ -295,20 +429,37 @@ def run(cfg) -> None:
     auto_modes = {str(mode) for mode in roster_cfg.get("auto_modes", [1, 2, 3])}
     tod_windows = roster_cfg["tod_windows"]
     gateway_activity_type = str(cordon_cfg.get("gateway_activity_type", "gateway"))
+    gateway_k_nearest = int(cordon_cfg.get("gateway_k_nearest", DEFAULT_GATEWAY_K_NEAREST))
+    gateway_min_capacity = float(cordon_cfg.get("gateway_min_capacity", DEFAULT_GATEWAY_MIN_CAPACITY))
+    gateway_boundary_band_m = float(cordon_cfg.get("gateway_boundary_band_m", DEFAULT_GATEWAY_BOUNDARY_BAND_M))
+    cordon_sample_multiplier = float(cordon_cfg.get("sample_fraction_multiplier", 1.0))
+    cordon_sample_fraction = cfg.scenario.sample_fraction * cordon_sample_multiplier
 
     zip_path = cfg.data_raw / ROSTER_ZIP
     cordon_cache_path = cfg.data_interim / CORDON_CACHE
     gateway_cache_path = cfg.data_interim / GATEWAY_CACHE
     plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
-
     if not cordon_cache_path.exists():
         if not zip_path.exists():
             raise FileNotFoundError(f"Missing CMAP roster zip: {zip_path}")
         _write_cordon_cache(_open_roster_reader(zip_path, member), cordon_cache_path, taz_ids, auto_modes)
 
     external_zones = _external_zones_from_rows(_read_filtered_cache(cordon_cache_path), taz_ids)
-    nodes = extract_network_nodes(links)
-    gateways = _load_or_build_gateways(gateway_cache_path, zones_path, external_zones, nodes, cfg.crs)
+    import geopandas as gpd
+
+    network_buffer_m = float(cfg.sources.get("osm", {}).get("network_buffer_m", cfg.boundary.buffer_m))
+    gateway_boundary = gpd.read_file(boundary_path).to_crs(cfg.crs).geometry.union_all().buffer(network_buffer_m).boundary
+    gateways = _load_or_build_gateways(
+        gateway_cache_path,
+        zones_path,
+        external_zones,
+        links,
+        cfg.crs,
+        k_nearest=gateway_k_nearest,
+        min_capacity=gateway_min_capacity,
+        boundary_geometry=gateway_boundary,
+        boundary_band_m=gateway_boundary_band_m,
+    )
 
     rng = np.random.default_rng(RNG_SEED)
     internal_plans = generate_person_plans(
@@ -316,15 +467,17 @@ def run(cfg) -> None:
         cfg.scenario.sample_fraction,
         tod_windows,
         rng,
+        departure_jitter_std_seconds=cfg.scenario.departure_jitter_std_seconds,
     )
     cordon_plans = generate_cordon_person_plans(
         _read_filtered_cache(cordon_cache_path),
         taz_ids,
         gateways,
-        cfg.scenario.sample_fraction,
+        cordon_sample_fraction,
         tod_windows,
         rng,
         gateway_activity_type=gateway_activity_type,
+        departure_jitter_std_seconds=cfg.scenario.departure_jitter_std_seconds,
     )
     summary = CordonGenerationSummary()
 
@@ -363,6 +516,12 @@ def run(cfg) -> None:
         f"cordon_in={summary.cordon_in}; "
         f"cordon_out={summary.cordon_out}; "
         f"total_agents={summary.total_agents}; "
-        f"n_gateways={len(gateways)}; "
+        f"departure_jitter_std_seconds={cfg.scenario.departure_jitter_std_seconds:g}; "
+        f"cordon_sample_fraction={cordon_sample_fraction:g}; "
+        f"gateway_k_nearest={gateway_k_nearest}; "
+        f"gateway_min_capacity={gateway_min_capacity:g}; "
+        f"gateway_boundary_band_m={gateway_boundary_band_m:g}; "
+        f"n_gateway_zones={len(gateways)}; "
+        f"n_gateway_choices={sum(len(choices) for choices in gateways.values())}; "
         f"distinct_external_zones={len(external_zones)}"
     )

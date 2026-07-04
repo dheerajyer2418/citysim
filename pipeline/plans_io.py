@@ -10,7 +10,7 @@ from lxml import etree
 
 
 Activity: TypeAlias = tuple[str, float, float, float | None]
-PersonPlan: TypeAlias = tuple[str, Iterable[Activity]]
+PersonPlan: TypeAlias = tuple[str, Iterable[Activity]] | tuple[str, Iterable[Activity], str]
 
 
 def stochastic_count(expected: float, rng) -> int:
@@ -41,8 +41,8 @@ def format_time(seconds: float) -> str:
 def write_population(persons: Iterable[PersonPlan], path: str | Path) -> Path:
     """Write a gzipped MATSim population_v6 XML file.
 
-    Each person is `(person_id, activities)`, and car legs are implied between
-    consecutive activities.
+    Each person is `(person_id, activities)` for car legs or
+    `(person_id, activities, leg_mode)` for explicit per-person leg mode.
     """
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -52,7 +52,12 @@ def write_population(persons: Iterable[PersonPlan], path: str | Path) -> Path:
         handle.write(b'<!DOCTYPE population SYSTEM "http://www.matsim.org/files/dtd/population_v6.dtd">\n')
         with etree.xmlfile(handle, encoding="UTF-8") as xf:
             with xf.element("population"):
-                for person_id, activities_iter in persons:
+                for person in persons:
+                    if len(person) == 2:
+                        person_id, activities_iter = person
+                        leg_mode = "car"
+                    else:
+                        person_id, activities_iter, leg_mode = person
                     activities = list(activities_iter)
                     with xf.element("person", id=str(person_id)):
                         with xf.element("plan", selected="yes"):
@@ -66,5 +71,5 @@ def write_population(persons: Iterable[PersonPlan], path: str | Path) -> Path:
                                     attributes["end_time"] = format_time(float(end_time))
                                 xf.write(etree.Element("activity", **attributes))
                                 if index < len(activities) - 1:
-                                    xf.write(etree.Element("leg", mode="car"))
+                                    xf.write(etree.Element("leg", mode=str(leg_mode)))
     return output

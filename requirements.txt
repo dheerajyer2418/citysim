@@ -15,3 +15,5 @@ networkx
 zipfile-deflate64
 matplotlib
 mapclassify
+fastapi
+uvicorn
