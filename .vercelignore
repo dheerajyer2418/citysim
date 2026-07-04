@@ -1,0 +1,14 @@
+# The Vercel deploy is a static site served from public/ only.
+# Ignore the Python/Java project so Vercel does not try to install or build it.
+requirements.txt
+environment.yml
+pipeline/
+matsim/
+scenarios/
+data/
+tests/
+viz/
+cli.py
+*.py
+*.bat
+*.ps1

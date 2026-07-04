@@ -1,4 +1,7 @@
 {
   "cleanUrls": true,
+  "framework": null,
+  "installCommand": "echo no install needed",
+  "buildCommand": "echo static site - nothing to build",
   "outputDirectory": "public"
 }
