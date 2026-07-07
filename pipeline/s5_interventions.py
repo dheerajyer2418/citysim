@@ -1,4 +1,4 @@
-"""Stage s5: pothole intervention network generation."""
+﻿"""Stage s5: pothole intervention network generation."""
 
 from __future__ import annotations
 
@@ -480,8 +480,7 @@ def _write_run_config(template_path: Path, output_path: Path, network_file: str,
 
 def run(cfg: Any) -> None:
     """Fetch 311 potholes, degrade affected links, and write scenario configs."""
-    project_root = Path(cfg.project_root)
-    scenario_dir = project_root / "scenarios" / "logan_square"
+    scenario_dir = cfg.scenario_dir
     network_path = scenario_dir / "network.xml.gz"
     degraded_network_path = scenario_dir / "network_potholes.xml.gz"
     bike_lane_network_path = scenario_dir / "network_bike_lane.xml.gz"
@@ -489,8 +488,8 @@ def run(cfg: Any) -> None:
     pothole_links_csv = cfg.data_interim / "pothole_links.csv"
     pothole_metadata_json = cfg.data_interim / "pothole_filter_metadata.json"
     bike_lane_links_csv = cfg.data_interim / "bike_lane_links.csv"
-    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
-    links_path = cfg.data_interim / "network_links.gpkg"
+    boundary_path = cfg.boundary_path
+    links_path = cfg.network_links_path
 
     pothole_cfg = cfg.interventions.get("pothole", {})
     speed_per = float(pothole_cfg.get("speed_penalty_per_pothole", 0.05))
@@ -577,3 +576,4 @@ def run(cfg: Any) -> None:
         f"median_penalty={median_penalty:.3f}, max_penalty={max_observed_penalty:.3f}, "
         f"bike_lane_links={bike_lane_changed}, generic_edit_links={generic_changed}"
     )
+

@@ -1,0 +1,87 @@
+{
+  "annual_benefits_usd": {
+    "total": 442274.5777355866,
+    "travel_time": 0.0,
+    "vehicle_damage": 442274.5777355866
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 67.09262404969456,
+  "cost_usd": 6400.0,
+  "daily_benefits_usd": {
+    "total": 1474.2485924519553,
+    "travel_time": 0.0,
+    "vehicle_damage": 1474.2485924519553
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 429392.79391804524
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_baseline",
+    "daily_vht_baseline": 32541.022222222167,
+    "daily_vht_fixed": 32580.39722222239,
+    "daily_vmt_baseline": 571936.2112761447,
+    "daily_vmt_fixed": 572944.2866161624,
+    "daily_vmt_pothole_links_baseline": 14742.485924519553,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 64
+  },
+  "net_benefit_usd": 422992.79391804524,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 0.0,
+    "mean_trip_minutes_delta": -0.008793315219413955,
+    "median_trip_minutes_delta": 0.0,
+    "stuck_trips_delta_scaled": 0.0,
+    "vht_delta_hours": -39.37500000022192,
+    "vmt_delta_miles": -1008.0753400176764
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 26867.0,
+      "arrivals_scaled": 268670.0,
+      "completed_trips_sample": 26867.0,
+      "completed_trips_scaled": 268670.0,
+      "completed_vmt_scaled": 572018.598882526,
+      "completion_rate": 1.0,
+      "departures_sample": 26867.0,
+      "departures_scaled": 268670.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.267135643478369,
+      "median_trip_minutes": 6.716666666666668,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_baseline",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 32541.022222222167,
+      "vmt": 571936.2112761447
+    },
+    "fixed": {
+      "arrivals_sample": 26867.0,
+      "arrivals_scaled": 268670.0,
+      "completed_trips_sample": 26867.0,
+      "completed_trips_scaled": 268670.0,
+      "completed_vmt_scaled": 573026.7425733715,
+      "completion_rate": 1.0,
+      "departures_sample": 26867.0,
+      "departures_scaled": 268670.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.275928958697783,
+      "median_trip_minutes": 6.716666666666668,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 32580.39722222239,
+      "vmt": 572944.2866161624
+    },
+    "warnings": []
+  }
+}

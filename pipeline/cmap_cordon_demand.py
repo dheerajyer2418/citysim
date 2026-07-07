@@ -1,8 +1,9 @@
-"""Stage s2d: CMAP cordon demand synthesis through boundary gateways."""
+﻿"""Stage s2d: CMAP cordon demand synthesis through boundary gateways."""
 
 from __future__ import annotations
 
 import csv
+import shutil
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from io import TextIOWrapper
@@ -38,6 +39,17 @@ GATEWAY_FIELDS = ("external_zone", "rank", "link_id", "x", "y", "capacity", "wei
 DEFAULT_GATEWAY_K_NEAREST = 5
 DEFAULT_GATEWAY_MIN_CAPACITY = 1000.0
 DEFAULT_GATEWAY_BOUNDARY_BAND_M = 300.0
+
+
+def _ensure_run_config(cfg) -> None:
+    config_path = cfg.scenario_dir / "config.xml"
+    if config_path.exists():
+        return
+    template = cfg.project_root / "scenarios" / "logan_square" / "config.xml"
+    if not template.exists():
+        raise FileNotFoundError(f"Missing MATSim config template: {template}")
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(template, config_path)
 
 
 @dataclass(frozen=True)
@@ -409,11 +421,11 @@ def run(cfg) -> None:
     import geopandas as gpd
     import numpy as np
 
-    taz_path = cfg.data_interim / "logan_square_taz.gpkg"
-    links_path = cfg.data_interim / "network_links.gpkg"
+    taz_path = cfg.taz_path
+    links_path = cfg.network_links_path
     zones_path = cfg.data_raw / "cmap_taz_zones17.geojson"
     internal_cache_path = cfg.data_interim / INTERNAL_CACHE
-    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
+    boundary_path = cfg.boundary_path
     for path in (taz_path, links_path, zones_path, internal_cache_path, boundary_path):
         if not path.exists():
             raise FileNotFoundError(f"Missing required artifact: {path}")
@@ -438,7 +450,7 @@ def run(cfg) -> None:
     zip_path = cfg.data_raw / ROSTER_ZIP
     cordon_cache_path = cfg.data_interim / CORDON_CACHE
     gateway_cache_path = cfg.data_interim / GATEWAY_CACHE
-    plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
+    plans_path = cfg.scenario_dir / PLANS_OUTPUT
     if not cordon_cache_path.exists():
         if not zip_path.exists():
             raise FileNotFoundError(f"Missing CMAP roster zip: {zip_path}")
@@ -509,6 +521,7 @@ def run(cfg) -> None:
             yield plan
 
     write_population(chain(counted_internal(), counted_cordon()), plans_path)
+    _ensure_run_config(cfg)
 
     print(
         "s2d complete: "
@@ -525,3 +538,4 @@ def run(cfg) -> None:
         f"n_gateway_choices={sum(len(choices) for choices in gateways.values())}; "
         f"distinct_external_zones={len(external_zones)}"
     )
+

@@ -1,4 +1,4 @@
-"""Stage s6: pothole benefit-cost monetization."""
+﻿"""Stage s6: pothole benefit-cost monetization."""
 
 from __future__ import annotations
 
@@ -400,8 +400,7 @@ def _write_bike_lane_bca(cfg: Any, fixed: dict[str, Any]) -> dict[str, Any] | No
     if not bike_lane_cfg.get("enabled", False) or not bca_cfg.get("enabled", False):
         return None
 
-    project_root = Path(cfg.project_root)
-    scenario_dir = project_root / "scenarios" / "logan_square"
+    scenario_dir = getattr(cfg, "scenario_dir", Path(cfg.project_root) / "scenarios" / "logan_square")
     bike_lane_dir = scenario_dir / "output_bike_lane"
     bike_lane_links_csv = cfg.data_interim / "bike_lane_links.csv"
     output_json = cfg.data_processed / "bike_lane_bca.json"
@@ -515,8 +514,7 @@ def _write_scenario_comparison(cfg: Any, scenarios: dict[str, dict[str, Any]], b
 
 def run(cfg: Any) -> None:
     """Read baseline/fixed MATSim outputs and write pothole BCA JSON."""
-    project_root = Path(cfg.project_root)
-    scenario_dir = project_root / "scenarios" / "logan_square"
+    scenario_dir = getattr(cfg, "scenario_dir", Path(cfg.project_root) / "scenarios" / "logan_square")
     baseline_dir = scenario_dir / "output_baseline"
     fixed_dir = scenario_dir / "output_fixed"
     pothole_links_csv = cfg.data_interim / "pothole_links.csv"
@@ -639,3 +637,4 @@ def run(cfg: Any) -> None:
             f"net=${bike_lane_payload['net_benefit_usd']:,.2f}, "
             f"reliable={bike_lane_payload['bca_reliable']}"
         )
+

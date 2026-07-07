@@ -1,4 +1,4 @@
-"""Local FastAPI server for the user-drawn scenario builder."""
+﻿"""Local FastAPI server for the user-drawn scenario builder."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ CONTROL_ACTIONS: dict[str, dict[str, Any]] = {
     },
     "run_bike_lane": {
         "label": "Run bike lane",
-        "description": "Runs MATSim using the Milwaukee Ave bike-lane network.",
+        "description": "Runs MATSim using the configured bike-lane network.",
         "steps": [{"kind": "matsim", "config": "config_bike_lane.xml"}],
     },
     "run_all_scenarios": {
@@ -172,7 +172,7 @@ def _step_label(step: dict[str, str]) -> str:
 
 
 def _run_control_step(cfg: CitySimConfig, step: dict[str, str], log: list[str]) -> None:
-    scenario_dir = cfg.project_root / "scenarios" / "logan_square"
+    scenario_dir = cfg.scenario_dir
     kind = step["kind"]
     if kind == "matsim":
         _run_command(
@@ -190,24 +190,29 @@ def _run_control_step(cfg: CitySimConfig, step: dict[str, str], log: list[str]) 
         return
     if kind == "diagnostics":
         env = os.environ.copy()
+        env["CITYSIM_AREA"] = cfg.area_slug
         env["CITYSIM_MATSIM_OUTPUT_DIR"] = step["output"]
         env["CITYSIM_DIAGNOSTICS_SUFFIX"] = step["suffix"]
         _run_command([str(_python_path(cfg)), "cli.py", "run", "--stage", "diag"], cwd=cfg.project_root, log=log, env=env)
         return
     if kind == "python_stage":
-        _run_command([str(_python_path(cfg)), "cli.py", "run", "--stage", step["stage"]], cwd=cfg.project_root, log=log)
+        _run_command([str(_python_path(cfg)), "cli.py", "run", "--stage", step["stage"], "--area", cfg.area_slug], cwd=cfg.project_root, log=log)
         return
     if kind == "script":
-        _run_command([str(_python_path(cfg)), step["script"]], cwd=cfg.project_root, log=log)
+        command = [str(_python_path(cfg)), step["script"]]
+        if str(step["script"]).startswith("viz\\"):
+            command.extend(["--area", cfg.area_slug])
+        _run_command(command, cwd=cfg.project_root, log=log)
         return
     raise ValueError(f"Unsupported control step kind: {kind}")
 
 
 def _output_roots(cfg: CitySimConfig) -> dict[str, Path]:
+    scenario_dir = getattr(cfg, "scenario_dir", Path(cfg.project_root) / "scenarios" / "logan_square")
     return {
         "processed": cfg.data_processed,
         "interim": cfg.data_interim,
-        "scenario": cfg.project_root / "scenarios" / "logan_square",
+        "scenario": scenario_dir,
     }
 
 
@@ -827,20 +832,48 @@ def create_app(cfg: CitySimConfig | None = None):
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
-        return EDITOR_HTML
+        return EDITOR_HTML.replace("Logan Square", cfg.area_name)
+
+    def _area_cfg(area_slug: str) -> CitySimConfig:
+        return load_config(area=area_slug.replace("-", "_"))
+
+    def _static_area_file(area_cfg: CitySimConfig, filename: str):
+        path = area_cfg.scenario_dir / "output" / filename
+        if not path.exists():
+            raise HTTPException(status_code=404, detail=f"{area_cfg.area_name} {filename} has not been built yet.")
+        return FileResponse(path)
+
+    @app.get("/needs_map.html")
+    def needs_map():
+        return _static_area_file(cfg, "needs_map.html")
+
+    @app.get("/live_traffic.html")
+    def live_traffic():
+        return _static_area_file(cfg, "live_traffic.html")
+
+    @app.get("/{area_slug}/needs_map.html")
+    def area_needs_map(area_slug: str):
+        return _static_area_file(_area_cfg(area_slug), "needs_map.html")
+
+    @app.get("/{area_slug}/live_traffic.html")
+    def area_live_traffic(area_slug: str):
+        return _static_area_file(_area_cfg(area_slug), "live_traffic.html")
 
     @app.get("/live")
     def live():
-        path = cfg.project_root / "scenarios" / "logan_square" / "output" / "live_traffic.html"
+        path = cfg.scenario_dir / "output" / "live_traffic.html"
         if not path.exists():
             raise HTTPException(status_code=404, detail="Live visualization has not been built yet.")
         return FileResponse(path)
 
     @app.get("/api/status")
     def api_status() -> dict[str, Any]:
-        scenario_dir = cfg.project_root / "scenarios" / "logan_square"
+        scenario_dir = getattr(cfg, "scenario_dir", Path(cfg.project_root) / "scenarios" / "logan_square")
+        network_links = getattr(cfg, "network_links_path", cfg.data_interim / "network_links.gpkg")
         return {
-            "network_ready": (cfg.data_interim / "network_links.gpkg").exists(),
+            "network_ready": network_links.exists(),
+            "area": getattr(cfg, "area_slug", "logan_square"),
+            "area_name": getattr(cfg, "area_name", "Logan Square"),
             "base_network_ready": (scenario_dir / "network.xml.gz").exists(),
             "live_viz_ready": (scenario_dir / "output" / "live_traffic.html").exists(),
             "user_scenario_count": len(user_scenarios(cfg)),
@@ -920,7 +953,7 @@ def create_app(cfg: CitySimConfig | None = None):
     return app
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = False) -> None:
+def run_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = False, area: str | None = None) -> None:
     import uvicorn
 
     display_host = "localhost" if host in ("0.0.0.0", "") else host
@@ -932,4 +965,5 @@ def run_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = F
 
         # Open the browser shortly after uvicorn.run() below starts serving.
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
-    uvicorn.run(create_app(), host=host, port=port)
+    uvicorn.run(create_app(load_config(area=area)), host=host, port=port)
+

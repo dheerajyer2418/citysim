@@ -1,4 +1,4 @@
-"""Stage s3: GTFS sourcing and Logan Square transit feed filtering."""
+﻿"""Stage s3: GTFS sourcing and Logan Square transit feed filtering."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def run(cfg) -> None:
     project_root = Path(getattr(cfg, "project_root", Path.cwd()))
     data_raw = Path(getattr(cfg, "data_raw", project_root / "data" / "raw"))
     data_interim = Path(getattr(cfg, "data_interim", project_root / "data" / "interim"))
-    boundary_path = data_interim / "logan_square_boundary.gpkg"
+    boundary_path = getattr(cfg, "boundary_path", data_interim / "logan_square_boundary.gpkg")
     requested_date = str(gtfs.get("service_date", "2026-07-08"))
     access_buffer_m = float(gtfs.get("access_buffer_m", 1200))
     filtered_feeds: list[tuple[str, dict[str, pd.DataFrame]]] = []
@@ -47,7 +47,7 @@ def run(cfg) -> None:
         print(_summary(name, service_date, kept_stops, filtered))
 
     if filtered_feeds:
-        scenario_dir = project_root / "scenarios" / "logan_square"
+        scenario_dir = getattr(cfg, "scenario_dir", project_root / "scenarios" / "logan_square")
         schedule_path = scenario_dir / "transitSchedule.xml.gz"
         vehicles_path = scenario_dir / "transitVehicles.xml.gz"
         write_transit_files(
@@ -89,3 +89,4 @@ def _summary(name: str, service_date: str, kept_stops: pd.DataFrame, filtered: d
         f"area_stops={len(kept_stops)}; routes={len(routes)} {route_names}; "
         f"trips={len(filtered['trips'])}; departures={departures}; stop_time_rows={len(stop_times)}"
     )
+

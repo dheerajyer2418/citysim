@@ -9,10 +9,6 @@ from pipeline.download import download_and_extract_zip, download_to_raw
 from pipeline.io_socrata import fetch_geojson
 
 
-BOUNDARY_OUTPUT = "logan_square_boundary.gpkg"
-TAZ_OUTPUT = "logan_square_taz.gpkg"
-
-
 def _find_shapefile(extract_dir: Path) -> Path:
     shapefiles = sorted(extract_dir.rglob("*.shp"))
     if not shapefiles:
@@ -40,8 +36,8 @@ def run(cfg) -> None:
     import geopandas as gpd
 
     cfg.data_interim.mkdir(parents=True, exist_ok=True)
-    boundary_path = cfg.data_interim / BOUNDARY_OUTPUT
-    taz_path = cfg.data_interim / TAZ_OUTPUT
+    boundary_path = cfg.boundary_path
+    taz_path = cfg.taz_path
 
     if _existing_outputs(boundary_path, taz_path):
         boundary_gdf = gpd.read_file(boundary_path)

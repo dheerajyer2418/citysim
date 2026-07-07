@@ -1,4 +1,4 @@
-"""Stage s2c: CMAP all-purpose trip-roster demand synthesis."""
+﻿"""Stage s2c: CMAP all-purpose trip-roster demand synthesis."""
 
 from __future__ import annotations
 
@@ -300,13 +300,13 @@ def build_pt_plans(cfg) -> PtRosterBuildSummary:
     import geopandas as gpd
     import numpy as np
 
-    taz_path = cfg.data_interim / "logan_square_taz.gpkg"
-    links_path = cfg.data_interim / "network_links.gpkg"
+    taz_path = cfg.taz_path
+    links_path = cfg.network_links_path
     for path in (taz_path, links_path):
         if not path.exists():
             raise FileNotFoundError(f"Missing required prior-stage artifact: {path}")
 
-    car_plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
+    car_plans_path = cfg.scenario_dir / PLANS_OUTPUT
     if not car_plans_path.exists():
         raise FileNotFoundError(f"Missing car-only plans file: {car_plans_path}")
 
@@ -347,7 +347,7 @@ def build_pt_plans(cfg) -> PtRosterBuildSummary:
         rng,
         departure_jitter_std_seconds=cfg.scenario.departure_jitter_std_seconds,
     )
-    output_path = cfg.project_root / "scenarios" / "logan_square" / PT_PLANS_OUTPUT
+    output_path = cfg.scenario_dir / PT_PLANS_OUTPUT
     car_persons, pt_persons = _write_combined_pt_population(car_plans_path, pt_plans, output_path)
     return PtRosterBuildSummary(
         rows_scanned=rows_scanned,
@@ -378,8 +378,8 @@ def run(cfg) -> None:
     import geopandas as gpd
     import numpy as np
 
-    taz_path = cfg.data_interim / "logan_square_taz.gpkg"
-    links_path = cfg.data_interim / "network_links.gpkg"
+    taz_path = cfg.taz_path
+    links_path = cfg.network_links_path
     for path in (taz_path, links_path):
         if not path.exists():
             raise FileNotFoundError(f"Missing required prior-stage artifact: {path}")
@@ -395,7 +395,7 @@ def run(cfg) -> None:
     tod_windows = roster_cfg["tod_windows"]
     zip_path = cfg.data_raw / ROSTER_ZIP
     cache_path = cfg.data_interim / ROSTER_CACHE
-    plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
+    plans_path = cfg.scenario_dir / PLANS_OUTPUT
 
     # TODO: One-end-internal cordon/through trips (~869k auto) not modeled yet;
     # needs boundary gateway zones - future refinement.
@@ -452,3 +452,4 @@ def run(cfg) -> None:
         f"purpose_trips={summary.purpose_trips}; "
         f"timeperiod_trips={summary.timeperiod_trips}"
     )
+

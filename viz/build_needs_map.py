@@ -19,12 +19,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))  # allow importing pipeline.* when run as a script
 
-GEOJSON = ROOT / "data" / "processed" / "needs_index.geojson"
-CSV = ROOT / "data" / "processed" / "needs_index.csv"
-SUMMARY = ROOT / "data" / "processed" / "needs_index_summary.json"
-NAMES_CACHE = ROOT / "data" / "interim" / "link_names.json"
-DEFAULT_OUT = ROOT / "scenarios" / "logan_square" / "output" / "needs_map.html"
-
 # Only show the click popup for segments at/above this score (green/quiet streets stay silent).
 POPUP_MIN_SCORE = 20.0
 
@@ -55,11 +49,12 @@ def _osm_way_id(link_id: str) -> int | None:
         return None
 
 
-def load_link_names(link_ids: list[str]) -> dict[str, str]:
+def load_link_names(cfg, link_ids: list[str]) -> dict[str, str]:
     """Map link_id -> street name via the OSM extract (cached to data/interim/link_names.json)."""
-    if NAMES_CACHE.exists():
+    names_cache = cfg.data_interim / "link_names.json"
+    if names_cache.exists():
         try:
-            return json.loads(NAMES_CACHE.read_text(encoding="utf-8"))
+            return json.loads(names_cache.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             pass
     try:
@@ -67,10 +62,8 @@ def load_link_names(link_ids: list[str]) -> dict[str, str]:
 
         import geopandas as gpd
 
-        from pipeline.config import load_config
         from pipeline.s4_calibrate import _buffered_boundary_bounds_4326
 
-        cfg = load_config()
         dataset = cfg.sources["osm"].get("pyrosm_dataset", "Chicago")
         pbf = cfg.data_raw / f"{dataset}.osm.pbf"
         if not pbf.exists():
@@ -79,7 +72,7 @@ def load_link_names(link_ids: list[str]) -> dict[str, str]:
                 raise FileNotFoundError("no OSM .pbf in data/raw")
             pbf = Path(matches[0])
         bounds = _buffered_boundary_bounds_4326(
-            cfg.data_interim / "logan_square_boundary.gpkg",
+            cfg.boundary_path,
             cfg.crs,
             cfg.sources["osm"]["network_buffer_m"],
         )
@@ -102,21 +95,24 @@ def load_link_names(link_ids: list[str]) -> dict[str, str]:
             wid = _osm_way_id(lid)
             if wid is not None and wid in way_name:
                 names[lid] = way_name[wid]
-        NAMES_CACHE.parent.mkdir(parents=True, exist_ok=True)
-        NAMES_CACHE.write_text(json.dumps(names), encoding="utf-8")
+        names_cache.parent.mkdir(parents=True, exist_ok=True)
+        names_cache.write_text(json.dumps(names), encoding="utf-8")
         return names
     except Exception as exc:  # pragma: no cover - names are a nice-to-have, never fatal
         print(f"  (street names unavailable: {exc})")
         return {}
 
 
-def build_payload() -> dict:
-    geo = json.loads(GEOJSON.read_text(encoding="utf-8"))
-    summary = json.loads(SUMMARY.read_text(encoding="utf-8")) if SUMMARY.exists() else {}
+def build_payload(cfg) -> dict:
+    geojson = cfg.data_processed / "needs_index.geojson"
+    csv_path = cfg.data_processed / "needs_index.csv"
+    summary_path = cfg.data_processed / "needs_index_summary.json"
+    geo = json.loads(geojson.read_text(encoding="utf-8"))
+    summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
 
     raw: dict[str, dict] = {}
-    if CSV.exists():
-        with CSV.open(newline="", encoding="utf-8") as handle:
+    if csv_path.exists():
+        with csv_path.open(newline="", encoding="utf-8") as handle:
             for row in _csv.DictReader(handle):
                 raw[row["link_id"]] = row
 
@@ -150,7 +146,7 @@ def build_payload() -> dict:
         )
         all_points.extend(path)
 
-    names = load_link_names([f["link_id"] for f in features])
+    names = load_link_names(cfg, [f["link_id"] for f in features])
     for f in features:
         f["name"] = names.get(f["link_id"], "Unnamed street")
 
@@ -166,6 +162,8 @@ def build_payload() -> dict:
         ]
 
     return {
+        "area_slug": getattr(cfg, "area_slug", "logan_square"),
+        "area_name": getattr(cfg, "area_name", "Logan Square"),
         "features": features,
         "center": center,
         "total": len(features),
@@ -188,6 +186,7 @@ HTML = """<!DOCTYPE html>
   #banner{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:10px;padding:12px 22px;text-align:center;backdrop-filter:blur(4px);}
   #banner b{font-size:20px;display:block;}
   #banner span{font-size:12.5px;color:#9fb7cc;}
+  #areaName{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:7;background:rgba(6,14,22,.74);border:1px solid rgba(116,215,255,.42);border-radius:8px;padding:7px 14px;color:#fff;font-size:18px;font-weight:700;letter-spacing:0;text-shadow:0 1px 8px rgba(0,0,0,.75);pointer-events:none;}
   #hud{position:absolute;top:14px;left:16px;z-index:5;max-width:300px;background:rgba(10,20,32,.72);border:1px solid rgba(90,160,255,.25);border-radius:9px;padding:12px 14px;backdrop-filter:blur(4px);}
   #hud p{font-size:12px;line-height:1.4;color:#c6d9ec;margin:4px 0;}
   #ramp{height:12px;border-radius:6px;background:linear-gradient(90deg,rgb(40,190,120),rgb(245,220,80),rgb(235,80,55));margin-top:8px;}
@@ -211,16 +210,22 @@ HTML = """<!DOCTYPE html>
   #srcPanel a{color:#8fd6ff;text-decoration:none;}
   #srcPanel a:hover{text-decoration:underline;}
   #srcPanel .note{color:#a9bed2;font-size:11px;margin-top:8px;}
+  #areaWrap{position:absolute;top:14px;right:96px;z-index:8;color:#dff;background:rgba(10,20,32,.82);border:1px solid rgba(90,160,255,.25);border-radius:8px;padding:7px 10px;font-size:12.5px;display:flex;gap:7px;align-items:center;}
+  #areaButtons{display:flex;gap:5px;}
+  #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;}
+  #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="banner"><b>Click a street to see why it needs attention</b><span>Hover to highlight &middot; warmer color = higher priority</span></div>
+<div id="areaName"></div>
 <div id="hud">
   <p style="font-size:13px;color:#e7f1ff;">Streets scored 0-100 from public crash, pothole, and traffic data.</p>
   <p style="color:#9fb7cc;font-size:11px;">A planning signal, not ground truth.</p>
   <div id="ramp"></div><div id="legendrow"><span>lower need</span><span>higher need</span></div>
 </div>
+<div id="areaWrap">Neighborhood <span id="areaButtons"></span></div>
 <button id="srcBtn">Sources</button>
 <div id="srcPanel"></div>
 <div id="views">
@@ -231,7 +236,12 @@ HTML = """<!DOCTYPE html>
 <div id="popup"></div>
 <script id="payload" type="application/json">__DATA__</script>
 <script>
-const DATA = JSON.parse(document.getElementById('payload').textContent);
+const ROOT_DATA = JSON.parse(document.getElementById('payload').textContent);
+const AREAS = ROOT_DATA.areas || {[ROOT_DATA.area_slug || 'logan_square']: ROOT_DATA};
+const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
+let areaSlug = localStorage.getItem('citysim_needs_area') || ROOT_DATA.default_area || AREA_ORDER[0];
+if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
+let DATA = AREAS[areaSlug];
 const {DeckGL, TileLayer, BitmapLayer, PathLayer} = deck;
 const BASEMAPS = {
   dark:'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
@@ -263,6 +273,18 @@ const deckgl=new DeckGL({container:'map',
     style:{background:'rgba(6,14,22,.95)',color:'#e7f1ff',fontSize:'12px',padding:'6px 9px',borderRadius:'6px',border:'1px solid rgba(116,215,255,.5)'}},
   getCursor:({isHovering})=>isHovering?'pointer':'grab'});
 function render(){deckgl.setProps({layers:[baseLayer(),needsLayer()]});}
+function selectArea(nextSlug){
+  areaSlug = nextSlug;
+  DATA = AREAS[areaSlug];
+  localStorage.setItem('citysim_needs_area', areaSlug);
+  document.title='CitySim - Where do '+DATA.area_name+' streets need attention?';
+  document.getElementById('areaName').textContent=DATA.area_name;
+  document.getElementById('popup').style.display='none';
+  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0,transitionDuration:350}});
+  render();
+  renderSources();
+  document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
+}
 function bar(v){return '<div class="bar"><span style="width:'+Math.round(v*100)+'%"></span></div>';}
 function clickStreet(d){
   const p=document.getElementById('popup');
@@ -283,13 +305,21 @@ document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#views button').forEach(x=>x.classList.toggle('active',x===b));
   render();
 });
+const areaButtons=document.getElementById('areaButtons');
+AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>selectArea(slug);areaButtons.appendChild(b);});
+document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
 const btn=document.getElementById('srcBtn'), panel=document.getElementById('srcPanel');
+function renderSources(){
 let html='<h3>Data sources</h3>';
 DATA.sources.forEach(s=>{html+='<div>'+(s.url?('<a href="'+s.url+'" target="_blank" rel="noopener">'+s.name+'</a>'):s.name)+'</div>';});
 const w=DATA.weights||{}, c=DATA.coverage||{};
 html+='<div class="note">Weights &mdash; safety '+((w.safety||0)*100).toFixed(0)+'%, pavement '+((w.pavement||0)*100).toFixed(0)+'%, congestion '+((w.congestion||0)*100).toFixed(0)+'%.</div>';
 html+='<div class="note">Coverage &mdash; safety '+((c.safety||0)*100).toFixed(0)+'%, pavement '+((c.pavement||0)*100).toFixed(0)+'%, congestion '+((c.congestion||0)*100).toFixed(0)+'%. Pavement and traffic-count coverage is sparse, so the score is currently safety-weighted.</div>';
 panel.innerHTML=html;
+}
+document.title='CitySim - Where do '+DATA.area_name+' streets need attention?';
+document.getElementById('areaName').textContent=DATA.area_name;
+renderSources();
 btn.onclick=()=>panel.classList.toggle('open');
 </script>
 </body>
@@ -298,11 +328,22 @@ btn.onclick=()=>panel.classList.toggle('open');
 
 
 def main() -> None:
-    out_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_OUT
-    if not GEOJSON.exists():
-        raise SystemExit(f"Missing {GEOJSON}. Run: python cli.py run --stage s7")
-    payload = build_payload()
+    import argparse
+
+    from pipeline.config import load_config
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("out", nargs="?")
+    parser.add_argument("--area", help="configured area slug to use")
+    args = parser.parse_args()
+    cfg = load_config(area=args.area)
+    out_path = Path(args.out) if args.out else cfg.scenario_dir / "output" / "needs_map.html"
+    geojson = cfg.data_processed / "needs_index.geojson"
+    if not geojson.exists():
+        raise SystemExit(f"Missing {geojson}. Run: python cli.py run --stage s7 --area {cfg.area_slug}")
+    payload = build_payload(cfg)
     html = HTML.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
+    html = html.replace("Logan Square", cfg.area_name)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")
     named = sum(1 for f in payload["features"] if f["name"] != "Unnamed street")

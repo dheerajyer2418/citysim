@@ -41,6 +41,8 @@ def test_cli_stages_registered() -> None:
     args = parser.parse_args(["serve", "--port", "9000"])
     assert args.command == "serve"
     assert args.port == 9000
+    args = parser.parse_args(["run", "--area", "lake_view", "--stage", "s3"])
+    assert args.area == "lake_view"
 
 
 def test_default_config_has_required_coefficient_sources() -> None:
@@ -50,3 +52,16 @@ def test_default_config_has_required_coefficient_sources() -> None:
 
     assert cfg.coefficient_sources["required"] is True
     assert cfg.coefficient_sources["values"]["value_of_time_usd_per_hr"]["url"].startswith("https://")
+
+
+def test_lake_view_config_uses_area_specific_paths_and_broadway() -> None:
+    from pipeline.config import load_config
+
+    cfg = load_config(area="lake_view")
+
+    assert cfg.area_slug == "lake_view"
+    assert cfg.boundary.community_area_id == 6
+    assert cfg.boundary.name == "Lake View"
+    assert cfg.scenario_dir.name == "lake_view"
+    assert cfg.data_interim.name == "lake_view"
+    assert cfg.interventions["bike_lane"]["name"] == "Broadway bike lane"

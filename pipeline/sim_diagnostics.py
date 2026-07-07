@@ -1,4 +1,4 @@
-"""MATSim output diagnostics for model-health and bottleneck triage."""
+﻿"""MATSim output diagnostics for model-health and bottleneck triage."""
 
 from __future__ import annotations
 
@@ -213,7 +213,7 @@ def write_tuning_recommendations_csv(rows: list[dict[str, Any]], output_path: Pa
 
 
 def run(cfg: Any) -> None:
-    scenario_dir = Path(cfg.project_root) / "scenarios" / "logan_square"
+    scenario_dir = cfg.scenario_dir
     output_name = os.environ.get("CITYSIM_MATSIM_OUTPUT_DIR", "output")
     output_dir = Path(output_name)
     if not output_dir.is_absolute():
@@ -253,3 +253,4 @@ def run(cfg: Any) -> None:
         f"top_stuck_link={top_link}; "
         f"wrote={output_json}, {output_csv}, {tuning_csv}"
     )
+

@@ -1,4 +1,4 @@
-"""Build and run top needs-index road-diet scenarios."""
+﻿"""Build and run top needs-index road-diet scenarios."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -152,7 +153,7 @@ def run_matsim(cfg: CitySimConfig, scenario_id: str) -> bool:
     try:
         subprocess.run(
             command,
-            cwd=str(cfg.project_root / "scenarios" / "logan_square"),
+            cwd=str(cfg.scenario_dir),
             check=True,
         )
     except subprocess.CalledProcessError as exc:
@@ -196,7 +197,7 @@ def build_scenarios(cfg: CitySimConfig) -> list[SelectedCorridor]:
 def print_summary(cfg: CitySimConfig, corridors: list[SelectedCorridor], run_results: dict[str, bool]) -> None:
     print("\nFinal summary")
     for corridor in corridors:
-        iters = cfg.project_root / "scenarios" / "logan_square" / f"output_{corridor.scenario_id}" / "ITERS"
+        iters = cfg.scenario_dir / f"output_{corridor.scenario_id}" / "ITERS"
         status = "exists" if iters.exists() else "missing"
         run_status = "ok" if run_results.get(corridor.scenario_id) else "failed"
         print(
@@ -206,7 +207,10 @@ def print_summary(cfg: CitySimConfig, corridors: list[SelectedCorridor], run_res
 
 
 def main() -> None:
-    cfg = load_config()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--area", help="configured area slug to use")
+    args = parser.parse_args()
+    cfg = load_config(area=args.area)
     corridors = build_scenarios(cfg)
     run_results: dict[str, bool] = {}
     for corridor in corridors:
@@ -220,3 +224,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

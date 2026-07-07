@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 import bisect, collections, csv, json, math, pathlib
 from datetime import datetime, timezone, timedelta
 from typing import Any
@@ -148,18 +148,18 @@ def run(cfg) -> None:
     score_weights = ni.get('weights',
         {'safety': 0.45, 'pavement': 0.25, 'congestion': 0.30})
 
-    links = _read_network_links(cfg.data_interim / 'network_links.gpkg')
+    links = _read_network_links(cfg.network_links_path)
     links = [l for l in links if not l.is_connector]
     link_ids = [l.link_id for l in links]
 
     bounds = _buffered_boundary_bounds_4326(
-        cfg.data_interim / 'logan_square_boundary.gpkg',
+        cfg.boundary_path,
         cfg.crs,
         cfg.sources['osm']['network_buffer_m'])
     min_lon, min_lat, max_lon, max_lat = bounds
 
     cfg.data_raw.mkdir(parents=True, exist_ok=True)
-    cache_path = cfg.data_raw / 'crashes_raw.json'
+    cache_path = cfg.data_raw / f'{cfg.area_slug}_crashes_raw.json'
     cutoff_dt = datetime.now(timezone.utc) - timedelta(days=365 * lookback_years)
     cutoff_str = cutoff_dt.strftime('%Y-%m-%dT%H:%M:%S')
     where_str = (
@@ -210,7 +210,7 @@ def run(cfg) -> None:
         snap_counter = snap_potholes_to_links(projected_pts, links, snap_dist)
         potholes_per_link = dict(snap_counter)
 
-    cache_path = cfg.data_raw / 'adt_raw.json'
+    cache_path = cfg.data_raw / f'{cfg.area_slug}_adt_raw.json'
     # gc7y-n4xa uses midpointlat/midpointlon (not latitude/longitude) and is a
     # daily time series (many rows per segment), so aggregate to one mean
     # vehiclecount per segment before snapping.
@@ -333,3 +333,4 @@ def run(cfg) -> None:
         f"potholes={sum(1 for v in pavement_raw if v > 0)} adt_links={len(adt_per_link)} "
         f"max_score={max_score:.1f} median={median_score:.1f}"
     )
+

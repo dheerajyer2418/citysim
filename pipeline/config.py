@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,8 @@ class FhwaCoefficients:
 @dataclass(frozen=True)
 class CitySimConfig:
     project_root: Path
+    area_slug: str
+    area_name: str
     crs: str
     boundary: BoundaryConfig
     sources: dict[str, Any]
@@ -52,11 +55,31 @@ class CitySimConfig:
 
     @property
     def data_interim(self) -> Path:
+        if self.area_slug != "logan_square":
+            return self.project_root / "data" / "interim" / self.area_slug
         return self.project_root / "data" / "interim"
 
     @property
     def data_processed(self) -> Path:
+        if self.area_slug != "logan_square":
+            return self.project_root / "data" / "processed" / self.area_slug
         return self.project_root / "data" / "processed"
+
+    @property
+    def scenario_dir(self) -> Path:
+        return self.project_root / "scenarios" / self.area_slug
+
+    @property
+    def boundary_path(self) -> Path:
+        return self.data_interim / f"{self.area_slug}_boundary.gpkg"
+
+    @property
+    def taz_path(self) -> Path:
+        return self.data_interim / f"{self.area_slug}_taz.gpkg"
+
+    @property
+    def network_links_path(self) -> Path:
+        return self.data_interim / "network_links.gpkg"
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -103,9 +126,35 @@ def _validate_coefficient_sources(data: dict[str, Any]) -> None:
         raise ValueError(f"Missing coefficient source metadata for: {', '.join(missing)}")
 
 
-def load_config(path: str | Path = DEFAULT_PARAMS_PATH) -> CitySimConfig:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _area_data(data: dict[str, Any], area: str | None) -> tuple[str, dict[str, Any]]:
+    selected = area or os.getenv("CITYSIM_AREA") or str(data.get("active_area", "logan_square"))
+    areas = data.get("areas", {})
+    if not areas:
+        return selected, data
+    if selected not in areas:
+        raise ValueError(f"Unknown CitySim area {selected!r}. Available areas: {', '.join(sorted(areas))}")
+
+    area_cfg = dict(areas[selected])
+    merged = _deep_merge(data, area_cfg)
+    merged.pop("areas", None)
+    merged["active_area"] = selected
+    return selected, merged
+
+
+def load_config(path: str | Path = DEFAULT_PARAMS_PATH, *, area: str | None = None) -> CitySimConfig:
     params_path = Path(path)
-    data = _read_yaml(params_path)
+    raw = _read_yaml(params_path)
+    selected_area, data = _area_data(raw, area)
     _validate_coefficient_sources(data)
 
     boundary = data["boundary"]
@@ -114,6 +163,8 @@ def load_config(path: str | Path = DEFAULT_PARAMS_PATH) -> CitySimConfig:
 
     return CitySimConfig(
         project_root=params_path.resolve().parent,
+        area_slug=str(data.get("scenario_slug", selected_area)),
+        area_name=str(boundary["name"]),
         crs=str(data["crs"]),
         boundary=BoundaryConfig(
             community_area_id=int(boundary["community_area_id"]),

@@ -49,15 +49,18 @@ DEFAULT_STAGE_ORDER = ("s0", "s1", "s2", "s2c", "s2d", "s3", "s4", "s5", "s6")
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="citysim")
+    parser.add_argument("--area", help="configured area slug to use, e.g. logan_square or lake_view")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="run one stage or all stages")
+    run_parser.add_argument("--area", help="configured area slug to use, e.g. logan_square or lake_view")
     run_parser.add_argument(
         "--stage",
         choices=tuple(STAGES.keys()),
         help="pipeline stage to run; omit to run s0 through s6",
     )
     serve_parser = subparsers.add_parser("serve", help="start the local scenario builder")
+    serve_parser.add_argument("--area", help="configured area slug to use, e.g. logan_square or lake_view")
     serve_parser.add_argument("--host", default="127.0.0.1", help="host interface to bind")
     serve_parser.add_argument("--port", type=int, default=8000, help="port to bind")
     serve_parser.add_argument(
@@ -71,11 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_command(args: argparse.Namespace) -> None:
-    cfg = load_config()
+    cfg = load_config(area=args.area)
     selected = [args.stage] if args.stage else list(DEFAULT_STAGE_ORDER)
     for stage_name in selected:
         stage = STAGES[stage_name]
-        print(f"[{stage.name}] {stage.description}")
+        print(f"[{cfg.area_slug}:{stage.name}] {stage.description}")
         stage.runner(cfg)
 
 
@@ -88,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         from pipeline.scenario_server import run_server
 
-        run_server(host=args.host, port=args.port, open_browser=args.open_browser)
+        run_server(host=args.host, port=args.port, open_browser=args.open_browser, area=args.area)
         return 0
     parser.error(f"Unknown command: {args.command}")
     return 2

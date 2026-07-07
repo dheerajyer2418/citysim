@@ -1,4 +1,4 @@
-"""Stage s4: count validation and global volume correction."""
+﻿"""Stage s4: count validation and global volume correction."""
 
 from __future__ import annotations
 
@@ -464,9 +464,9 @@ def _write_counts_xml(path: Path, matches: list[MatchedCount], year: int | str) 
 def run(cfg: Any) -> None:
     """Validate simulated link volumes against Chicago ADT counts and write correction factors."""
     project_root = Path(cfg.project_root)
-    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
-    network_path = cfg.data_interim / "network_links.gpkg"
-    output_dir = project_root / "scenarios" / "logan_square" / "output"
+    boundary_path = cfg.boundary_path
+    network_path = cfg.network_links_path
+    output_dir = cfg.scenario_dir / "output"
 
     bounds = _buffered_boundary_bounds_4326(
         boundary_path,
@@ -487,7 +487,7 @@ def run(cfg: Any) -> None:
 
     validation_csv = cfg.data_processed / "calibration_validation.csv"
     factors_json = cfg.data_processed / "correction_factors.json"
-    counts_xml = project_root / "scenarios" / "logan_square" / "counts.xml"
+    counts_xml = cfg.scenario_dir / "counts.xml"
 
     _write_validation_csv(validation_csv, rows)
     factors_json.parent.mkdir(parents=True, exist_ok=True)
@@ -510,3 +510,4 @@ def run(cfg: Any) -> None:
         f"GEH<10 raw={metrics['pct_geh_lt_10']:.1f}% corrected={metrics['pct_geh_corrected_lt_10']:.1f}%, "
         f"global_factor={global_factor:.4f}"
     )
+

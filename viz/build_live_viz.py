@@ -17,17 +17,14 @@ import gzip
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
 from lxml import etree
 
 ROOT = Path(__file__).resolve().parents[1]
-SCEN_DIR = ROOT / "scenarios" / "logan_square"
-DEFAULT_OUT = SCEN_DIR / "output" / "live_traffic.html"
-NETWORK_LINKS = ROOT / "data" / "interim" / "network_links.gpkg"
-BCA_JSON = ROOT / "data" / "processed" / "pothole_bca.json"
-SCENARIO_COMPARISON_CSV = ROOT / "data" / "processed" / "scenario_comparison.csv"
+sys.path.insert(0, str(ROOT))
 
 USER_SCENARIOS_INTERVENTION = {
     "id": "user_scenarios",
@@ -36,7 +33,7 @@ USER_SCENARIOS_INTERVENTION = {
 }
 
 
-def read_pothole_comparison(path: Path = BCA_JSON) -> dict[str, Any] | None:
+def read_pothole_comparison(path: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
@@ -65,7 +62,7 @@ def read_pothole_comparison(path: Path = BCA_JSON) -> dict[str, Any] | None:
     }
 
 
-def read_scenario_stats(path: Path = SCENARIO_COMPARISON_CSV) -> dict[str, dict[str, Any]]:
+def read_scenario_stats(path: Path) -> dict[str, dict[str, Any]]:
     if not path.exists():
         return {}
     stats: dict[str, dict[str, Any]] = {}
@@ -92,10 +89,10 @@ def _coerce_stat(value: str | None) -> Any:
         return value
 
 
-def network_links_wgs84() -> tuple[dict[str, tuple[list[float], list[float]]], list[dict[str, Any]], dict[str, list[list[float]]]]:
+def network_links_wgs84(network_links: Path) -> tuple[dict[str, tuple[list[float], list[float]]], list[dict[str, Any]], dict[str, list[list[float]]]]:
     import geopandas as gpd
 
-    links = gpd.read_file(NETWORK_LINKS).to_crs(4326)
+    links = gpd.read_file(network_links).to_crs(4326)
     endpoints: dict[str, tuple[list[float], list[float]]] = {}
     roads: list[dict[str, Any]] = []
     paths_by_link_id: dict[str, list[list[float]]] = {}
@@ -204,6 +201,7 @@ HTML = """<!DOCTYPE html>
 <style>
   html,body,#map{margin:0;width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,sans-serif;}
   #hud{position:absolute;top:14px;left:16px;z-index:5;color:#e8f0ff;min-width:250px;}
+  #areaName{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:6;background:rgba(6,14,22,.74);border:1px solid rgba(116,215,255,.42);border-radius:8px;padding:7px 14px;color:#fff;font-size:18px;font-weight:700;letter-spacing:0;text-shadow:0 1px 8px rgba(0,0,0,.75);pointer-events:none;}
   #clock{font-size:30px;font-weight:700;letter-spacing:0;text-shadow:0 0 12px rgba(80,180,255,.6);}
   #sub{font-size:12px;opacity:.72;margin-top:2px;margin-bottom:10px;}
   #stats{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;font-size:12px;}
@@ -244,18 +242,25 @@ HTML = """<!DOCTYPE html>
   #summaryDefs{margin-top:9px;color:#9fb7cc;font-size:11px;line-height:1.4;}
   #downloadCsv{display:inline-block;margin-top:9px;color:#8fd6ff;font-size:12.5px;text-decoration:none;font-weight:600;}
   #downloadCsv:hover{text-decoration:underline;}
+  #areaWrap{position:absolute;top:14px;left:320px;z-index:6;color:#dff;}
+  #areaButtons{display:flex;gap:5px;}
+  #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;}
+  #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
   @media (max-width:760px){
     #hud{left:10px;top:10px;min-width:0;width:min(310px,calc(100vw - 20px));}
+    #areaName{top:126px;font-size:15px;}
     #scenwrap{left:10px;right:10px;top:auto;bottom:82px;}
     #scenwrap .pill{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;}
     #summary{left:10px;right:10px;bottom:150px;width:auto;max-height:30vh;}
     #infowrap{right:10px;top:10px;max-width:min(300px,calc(100vw - 20px));}
     #ctrl{left:10px;right:10px;bottom:10px;}
+    #areaWrap{left:10px;top:176px;}
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="areaName"></div>
 <div id="hud"><div class="pill">
   <div id="clock">--:--</div>
   <div id="sub">CitySim - Logan Square - simulated day (10% sample)</div>
@@ -273,6 +278,7 @@ HTML = """<!DOCTYPE html>
     <div class="legend-row"><span class="dot dot-stop"></span><span>Stopped or crawling</span></div>
   </div>
 </div></div>
+<div id="areaWrap"><div class="pill">Neighborhood&nbsp;<span id="areaButtons"></span></div></div>
 <div id="scenwrap"><div class="pill">
   Intervention&nbsp;<select id="intervention"></select>
   &nbsp;Scenario&nbsp;<select id="scenario"></select>
@@ -321,7 +327,12 @@ HTML = """<!DOCTYPE html>
 </div></div>
 <script id="trips-data" type="application/json">__DATA__</script>
 <script>
-const DATA = JSON.parse(document.getElementById('trips-data').textContent);
+const ROOT_DATA = JSON.parse(document.getElementById('trips-data').textContent);
+const AREAS = ROOT_DATA.areas || {[ROOT_DATA.area_slug || 'logan_square']: ROOT_DATA};
+const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
+let areaSlug = localStorage.getItem('citysim_live_area') || ROOT_DATA.default_area || AREA_ORDER[0];
+if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
+let DATA = AREAS[areaSlug];
 const {DeckGL, TileLayer, BitmapLayer, PathLayer, ScatterplotLayer} = deck;
 
 let scen = 0;
@@ -342,7 +353,8 @@ const basemap = new TileLayer({
   }
 });
 
-const roads = new PathLayer({
+function roadsLayer(){
+  return new PathLayer({
   id:'roads',
   data:DATA.roads,
   getPath:d=>d.path,
@@ -352,6 +364,7 @@ const roads = new PathLayer({
   widthMaxPixels:4,
   rounded:true
 });
+}
 
 function meters(a,b){
   const R=6371000, toRad=x=>x*Math.PI/180;
@@ -406,12 +419,12 @@ const deckgl = new DeckGL({
   container:'map',
   initialViewState:{longitude:DATA.center[0], latitude:DATA.center[1], zoom:13, pitch:50, bearing:-15},
   controller:true,
-  layers:[basemap, roads, affectedLayer(DATA.scenarios[0]), vehicleLayer([])]
+  layers:[basemap, roadsLayer(), affectedLayer(DATA.scenarios[0]), vehicleLayer([])]
 });
 
 const clock=document.getElementById('clock'), scrub=document.getElementById('scrub');
 const playBtn=document.getElementById('play'), speedEl=document.getElementById('speed');
-const interventionSel=document.getElementById('intervention'), sel=document.getElementById('scenario'), ntrips=document.getElementById('ntrips');
+const areaButtons=document.getElementById('areaButtons'), interventionSel=document.getElementById('intervention'), sel=document.getElementById('scenario'), ntrips=document.getElementById('ntrips');
 const activeEl=document.getElementById('active'), doneEl=document.getElementById('done');
 const lostEl=document.getElementById('lost'), shownEl=document.getElementById('shown');
 const infoToggle=document.getElementById('infoToggle'), infoPanel=document.getElementById('infoPanel');
@@ -420,6 +433,8 @@ const sumComplete=document.getElementById('sumComplete'), sumMeanTrip=document.g
 const sumVht=document.getElementById('sumVht'), sumVmt=document.getElementById('sumVmt');
 const sumStuck=document.getElementById('sumStuck'), sumLinks=document.getElementById('sumLinks');
 const sumWarn=document.getElementById('summaryWarn');
+
+AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>switchArea(slug);areaButtons.appendChild(b);});
 
 function fmtNumber(value,digits=0){return value===null||value===undefined||Number.isNaN(Number(value))?'--':Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});}
 function renderSummary(){
@@ -454,7 +469,10 @@ function renderSummary(){
   }
 }
 
-DATA.interventions.forEach((item)=>{const o=document.createElement('option');o.value=item.id;o.textContent=item.name;interventionSel.appendChild(o);});
+function populateInterventions(){
+  interventionSel.replaceChildren();
+  DATA.interventions.forEach((item)=>{const o=document.createElement('option');o.value=item.id;o.textContent=item.name;interventionSel.appendChild(o);});
+}
 function populateScenarios(){
   const selected=interventionSel.value || DATA.interventions[0].id;
   sel.replaceChildren();
@@ -464,10 +482,31 @@ function populateScenarios(){
   });
   scen=Number(sel.value || 0);
 }
-function refreshScen(){const s=DATA.scenarios[scen];scrub.min=s.tmin;scrub.max=s.tmax;ntrips.textContent=s.name+' - '+s.trips.length+' sampled vehicles';renderSummary();}
+function refreshScen(){
+  const s=DATA.scenarios[scen];
+  scrub.min=s.tmin;scrub.max=s.tmax;ntrips.textContent=s.name+' - '+s.trips.length+' sampled vehicles';renderSummary();
+  document.title='CitySim - '+DATA.area_name+' Live Traffic';
+  document.getElementById('areaName').textContent=DATA.area_name;
+  document.getElementById('sub').textContent='CitySim - '+DATA.area_name+' - simulated day (10% sample)';
+  document.querySelector('#infoPanel p').textContent='This is a traffic simulation for '+DATA.area_name+'. Each dot is a sampled car trip moving through the road network during a simulated day.';
+  document.getElementById('downloadCsv').href=(DATA.data_path||'data')+'/scenario_comparison.csv';
+}
+function switchArea(nextSlug){
+  areaSlug=nextSlug;
+  DATA=AREAS[areaSlug];
+  localStorage.setItem('citysim_live_area', areaSlug);
+  scen=0;
+  populateInterventions();
+  populateScenarios();
+  currentTime=DATA.scenarios[scen].tmin;
+  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13,pitch:50,bearing:-15,transitionDuration:350}});
+  refreshScen();
+  document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
+}
 function fmt(s){s=Math.floor(s)%86400;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0');}
 function countLeq(arr,t){let lo=0,hi=arr.length;while(lo<hi){const mid=(lo+hi)>>1;if(arr[mid]<=t)lo=mid+1;else hi=mid;}return lo;}
 
+populateInterventions();
 populateScenarios();
 refreshScen();
 renderSummary();
@@ -478,6 +517,7 @@ speedEl.oninput=e=>{speed=+e.target.value;};
 document.querySelectorAll('.preset').forEach(btn=>btn.onclick=()=>{speed=+btn.dataset.speed;speedEl.value=speed;});
 sel.onchange=e=>{scen=+e.target.value;refreshScen();currentTime=DATA.scenarios[scen].tmin;};
 interventionSel.onchange=()=>{populateScenarios();refreshScen();currentTime=DATA.scenarios[scen].tmin;};
+document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
 
 let last=performance.now();
 function frame(now){
@@ -495,7 +535,7 @@ function frame(now){
   doneEl.textContent=completed.toLocaleString();
   lostEl.textContent=stuck.toLocaleString();
   shownEl.textContent=points.length.toLocaleString();
-  deckgl.setProps({layers:[basemap, roads, affectedLayer(s), vehicleLayer(points)]});
+  deckgl.setProps({layers:[basemap, roadsLayer(), affectedLayer(s), vehicleLayer(points)]});
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -506,26 +546,33 @@ requestAnimationFrame(frame);
 
 
 def main() -> None:
+    from pipeline.config import load_config
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("out", nargs="?", default=str(DEFAULT_OUT))
+    parser.add_argument("out", nargs="?")
+    parser.add_argument("--area", help="configured area slug to use")
     parser.add_argument("--sample", type=int, default=3500, help="approx vehicles per scenario")
     args = parser.parse_args()
+    cfg = load_config(area=args.area)
+    scen_dir = cfg.scenario_dir
+    output_default = scen_dir / "output" / "live_traffic.html"
+    output_path = Path(args.out) if args.out else output_default
 
-    endpoints, roads, paths_by_link_id = network_links_wgs84()
+    endpoints, roads, paths_by_link_id = network_links_wgs84(cfg.network_links_path)
     keep_every = max(1, round(118000 / max(args.sample, 1)))
-    stats_by_scenario = read_scenario_stats()
+    stats_by_scenario = read_scenario_stats(cfg.data_processed / "scenario_comparison.csv")
 
     scenario_entries = [
-        ("user_scenarios", "fixed", "No change (current streets)", SCEN_DIR / "output_fixed"),
+        ("user_scenarios", "fixed", "No change (current streets)", scen_dir / "output_fixed"),
     ]
     interventions = [USER_SCENARIOS_INTERVENTION]
-    manifest_path = ROOT / "data" / "interim" / "user_scenarios" / "manifest.json"
+    manifest_path = cfg.data_interim / "user_scenarios" / "manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     except json.JSONDecodeError:
         manifest = {}
     custom_entries = [
-        ("user_scenarios", str(item["id"]), str(item["name"]), SCEN_DIR / str(item["output_dir"]))
+        ("user_scenarios", str(item["id"]), str(item["name"]), scen_dir / str(item["output_dir"]))
         for item in manifest.get("scenarios", [])
         if item.get("id") and item.get("name") and item.get("output_dir")
     ]
@@ -550,7 +597,7 @@ def main() -> None:
         tmax = max(trip["timestamps"][-1] for trip in trips)
         affected_csv = None
         if intervention_id == "user_scenarios" and scenario_id != "fixed":
-            affected_csv = ROOT / "data" / "interim" / "user_scenarios" / scenario_id / "selected_links.csv"
+            affected_csv = cfg.data_interim / "user_scenarios" / scenario_id / "selected_links.csv"
         scenarios.append(
             {
                 "scenario_id": scenario_id,
@@ -575,6 +622,9 @@ def main() -> None:
     center_x = sum(point[0] for point in all_points) / len(all_points)
     center_y = sum(point[1] for point in all_points) / len(all_points)
     payload = {
+        "area_slug": cfg.area_slug,
+        "area_name": cfg.area_name,
+        "data_path": "data",
         "scenarios": scenarios,
         "roads": roads,
         "center": [round(center_x, 5), round(center_y, 5)],
@@ -582,7 +632,8 @@ def main() -> None:
         "comparisons": {},
     }
     html = HTML.replace("__DATA__", json.dumps(payload, separators=(",", ":")))
-    output_path = Path(args.out)
+    html = html.replace("Logan Square", cfg.area_name)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     print(
         f"wrote {output_path} ({output_path.stat().st_size / 1e6:.1f} MB) | "

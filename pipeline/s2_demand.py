@@ -1,4 +1,4 @@
-"""Stage s2: LODES commute demand synthesis."""
+﻿"""Stage s2: LODES commute demand synthesis."""
 
 from __future__ import annotations
 
@@ -170,14 +170,14 @@ def run(cfg) -> None:
     """INPUT: LEHD LODES OD records, 2020 Census blocks, Logan Square TAZ, and S1 network links. OUTPUT: MATSim plans.xml.gz for scenarios/logan_square."""
     import geopandas as gpd
 
-    plans_path = cfg.project_root / "scenarios" / "logan_square" / PLANS_OUTPUT
+    plans_path = cfg.scenario_dir / PLANS_OUTPUT
     if plans_path.exists() and plans_path.stat().st_size > 0:
         print(f"s2 output already exists: {plans_path}")
         return
 
-    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
-    taz_path = cfg.data_interim / "logan_square_taz.gpkg"
-    links_path = cfg.data_interim / "network_links.gpkg"
+    boundary_path = cfg.boundary_path
+    taz_path = cfg.taz_path
+    links_path = cfg.network_links_path
     for path in (boundary_path, taz_path, links_path):
         if not path.exists():
             raise FileNotFoundError(f"Missing required prior-stage artifact: {path}")
@@ -220,3 +220,4 @@ def run(cfg) -> None:
         f"total_jobs_scaled={total_scaled_jobs}; "
         f"agents_written={len(agents)}"
     )
+

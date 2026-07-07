@@ -1,0 +1,96 @@
+{
+  "annual_benefits_usd": {
+    "crash_safety": 792000.0,
+    "gross": 4359157.165384615,
+    "net": 2448108.6271496816
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 19.115770015327147,
+  "cost_usd": 1092441.6405566493,
+  "daily_benefits_usd": {
+    "accessibility": 150.0,
+    "avoided_auto_operating_external": 121.1053846153846,
+    "car_network_disbenefits": 6370.161794116445,
+    "cycling_facility_quality": 10445.82,
+    "health": 1173.5985,
+    "total_gross": 11890.523884615384,
+    "total_net": 5520.362090498939
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 8.530202836775828,
+    "net": 20882863.156047594
+  },
+  "inputs": {
+    "analysis_period_years": 10,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
+    "bike_lane_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_bike_lane",
+    "discount_rate": 0.03,
+    "facility_miles": 3.901577287702319,
+    "sample_fraction": 0.1
+  },
+  "net_benefit_usd": 19790421.515490945,
+  "physical_inputs": {
+    "annual_avoided_bicycle_crashes": 3.6,
+    "annual_bicycle_crashes_baseline": 8.0,
+    "daily_avoided_auto_vmt": 192.2307692307692,
+    "daily_cycling_miles_on_facility": 4998.0,
+    "daily_existing_bike_trips": 1800.0,
+    "daily_induced_bike_trips": 300.0,
+    "facility_miles": 3.901577287702319,
+    "separated_lane_crash_reduction_factor": 0.45
+  },
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 0.0,
+    "mean_trip_minutes_delta": -0.06391608044565267,
+    "median_trip_minutes_delta": -0.03333333333333233,
+    "stuck_trips_delta_scaled": 0.0,
+    "vht_delta_hours": -286.20555555539613,
+    "vmt_delta_miles": -401.3747216211632
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 26867.0,
+      "arrivals_scaled": 268670.0,
+      "completed_trips_sample": 26867.0,
+      "completed_trips_scaled": 268670.0,
+      "completed_vmt_scaled": 573026.7425733715,
+      "completion_rate": 1.0,
+      "departures_sample": 26867.0,
+      "departures_scaled": 268670.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.275928958697783,
+      "median_trip_minutes": 6.716666666666668,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 32580.39722222239,
+      "vmt": 572944.2866161624
+    },
+    "bike_lane": {
+      "arrivals_sample": 26867.0,
+      "arrivals_scaled": 268670.0,
+      "completed_trips_sample": 26867.0,
+      "completed_trips_scaled": 268670.0,
+      "completed_vmt_scaled": 573428.3347749144,
+      "completion_rate": 1.0,
+      "departures_sample": 26867.0,
+      "departures_scaled": 268670.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.339845039143436,
+      "median_trip_minutes": 6.75,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_bike_lane",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 32866.602777777785,
+      "vmt": 573345.6613377836
+    },
+    "warnings": []
+  }
+}

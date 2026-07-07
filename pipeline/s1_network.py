@@ -1,4 +1,4 @@
-"""Stage s1: OSM-to-MATSim road network preparation."""
+﻿"""Stage s1: OSM-to-MATSim road network preparation."""
 
 from __future__ import annotations
 
@@ -345,7 +345,7 @@ def _osm_download_path(cfg) -> Path:
 def _buffered_boundary_wgs84(cfg):
     import geopandas as gpd
 
-    boundary_path = cfg.data_interim / "logan_square_boundary.gpkg"
+    boundary_path = cfg.boundary_path
     if not boundary_path.exists():
         raise FileNotFoundError(f"Missing S0 boundary output: {boundary_path}")
 
@@ -477,8 +477,8 @@ def run(cfg) -> None:
     from pyrosm import OSM
     import networkx as nx
 
-    network_path = cfg.project_root / "scenarios" / "logan_square" / NETWORK_OUTPUT
-    links_path = cfg.data_interim / LINKS_OUTPUT
+    network_path = cfg.scenario_dir / NETWORK_OUTPUT
+    links_path = cfg.network_links_path
     if network_path.exists() and network_path.stat().st_size > 0 and links_path.exists() and links_path.stat().st_size > 0:
         print(f"s1 outputs already exist: {network_path}, {links_path}")
         return
@@ -524,3 +524,4 @@ def links_path_bounds(links: list[MatsimLink]) -> tuple[float, float, float, flo
 
     bounds = unary_union([link.geometry for link in links]).bounds
     return (float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3]))
+

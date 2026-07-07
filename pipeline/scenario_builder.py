@@ -1,4 +1,4 @@
-"""User-drawn scenario builder and local run jobs."""
+﻿"""User-drawn scenario builder and local run jobs."""
 
 from __future__ import annotations
 
@@ -159,22 +159,23 @@ class JobQueue:
                     "citysim.RunCitySim",
                     applied["config_path"].name,
                 ],
-                cwd=self.cfg.project_root / "scenarios" / "logan_square",
+                cwd=self.cfg.scenario_dir,
                 log=job.log,
             )
 
             job.stage = "diagnostics"
             env = os.environ.copy()
+            env["CITYSIM_AREA"] = self.cfg.area_slug
             env["CITYSIM_MATSIM_OUTPUT_DIR"] = applied["output_dir"].name
             env["CITYSIM_DIAGNOSTICS_SUFFIX"] = spec.id
             _run_command([str(_python_path(self.cfg)), "cli.py", "run", "--stage", "diag"], cwd=self.cfg.project_root, log=job.log, env=env)
 
             job.stage = "monetization"
-            _run_command([str(_python_path(self.cfg)), "cli.py", "run", "--stage", "s6"], cwd=self.cfg.project_root, log=job.log)
+            _run_command([str(_python_path(self.cfg)), "cli.py", "run", "--stage", "s6", "--area", self.cfg.area_slug], cwd=self.cfg.project_root, log=job.log)
 
             job.stage = "visualization"
-            _run_command([str(_python_path(self.cfg)), "viz\\build_live_viz.py"], cwd=self.cfg.project_root, log=job.log)
-            job.live_viz_path = str(self.cfg.project_root / "scenarios" / "logan_square" / "output" / "live_traffic.html")
+            _run_command([str(_python_path(self.cfg)), "viz\\build_live_viz.py", "--area", self.cfg.area_slug], cwd=self.cfg.project_root, log=job.log)
+            job.live_viz_path = str(self.cfg.scenario_dir / "output" / "live_traffic.html")
             job.stage = "complete"
             job.status = "succeeded"
         except Exception as exc:  # pragma: no cover - exercised by manual long runs
@@ -255,6 +256,8 @@ def map_data(cfg: CitySimConfig) -> dict[str, Any]:
             round(sum(point[1] for point in all_points) / len(all_points), 6),
         ]
     return {
+        "area": getattr(cfg, "area_slug", "logan_square"),
+        "area_name": getattr(cfg, "area_name", "Logan Square"),
         "center": center,
         "roads": roads,
         "presets": PRESETS,
@@ -285,7 +288,7 @@ def apply_scenario(cfg: CitySimConfig, spec: ScenarioSpec) -> dict[str, Path | i
     selected = select_links_near_corridor(links, spec.corridor_lonlat, cfg.crs, spec.buffer_m, spec.min_link_capacity)
     if not selected:
         raise ValueError("No links matched this scenario corridor.")
-    scenario_dir = cfg.project_root / "scenarios" / "logan_square"
+    scenario_dir = cfg.scenario_dir
     user_dir = _user_scenario_dir(cfg, spec.id)
     user_dir.mkdir(parents=True, exist_ok=True)
     selected_csv = user_dir / "selected_links.csv"
@@ -337,7 +340,7 @@ def _write_manifest(cfg: CitySimConfig) -> None:
 
 
 def _scenario_links(cfg: CitySimConfig) -> list[NetworkLink]:
-    return _read_network_links(cfg.data_interim / "network_links.gpkg")
+    return _read_network_links(cfg.network_links_path)
 
 
 def _facility_miles(links: list[NetworkLink]) -> float:
@@ -417,3 +420,4 @@ def _run_command(command: list[str], *, cwd: Path, log: list[str], env: dict[str
 
 def default_job_queue() -> JobQueue:
     return JobQueue(load_config())
+
