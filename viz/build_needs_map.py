@@ -214,11 +214,15 @@ HTML = """<!DOCTYPE html>
   #areaButtons{display:flex;gap:5px;}
   #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;}
   #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
+  #nbhdHint{position:absolute;left:50%;top:20px;transform:translateX(-50%);z-index:8;display:none;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:999px;padding:9px 18px;font-size:13.5px;color:#e7f3ff;backdrop-filter:blur(5px);box-shadow:0 8px 26px rgba(0,0,0,.45);pointer-events:none;letter-spacing:.01em;animation:hintIn .5s ease both;}
+  #nbhdHint b{color:#8fd6ff;font-weight:700;}
+  @keyframes hintIn{from{opacity:0;transform:translate(-50%,-6px);}to{opacity:1;transform:translate(-50%,0);}}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="banner"><b>Click a street to see why it needs attention</b><span>Hover to highlight &middot; warmer color = higher priority</span></div>
+<div id="nbhdHint">Pick a <b>neighborhood</b> to explore</div>
 <div id="areaName"></div>
 <div id="hud">
   <p style="font-size:13px;color:#e7f1ff;">Streets scored 0-100 from public crash, pothole, and traffic data.</p>
@@ -242,6 +246,11 @@ const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
 let areaSlug = localStorage.getItem('citysim_needs_area') || ROOT_DATA.default_area || AREA_ORDER[0];
 if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
 let DATA = AREAS[areaSlug];
+const BOUNDARIES = ROOT_DATA.boundaries || [];
+const BOUNDS = ROOT_DATA.bounds || null;
+let curZoom = 11;
+function grayFor(i){const n=Math.max(1,BOUNDARIES.length-1);const v=Math.round(64+72*(i/n));return v;}
+function overlayOpacity(){return BOUNDARIES.length>1?Math.max(0,Math.min(1,(12.7-curZoom)/1.5)):0;}
 const {DeckGL, TileLayer, BitmapLayer, PathLayer} = deck;
 const BASEMAPS = {
   dark:'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
@@ -266,13 +275,47 @@ function needsLayer(){
     widthUnits:'pixels',widthMinPixels:1.4,widthMaxPixels:6,rounded:true,
     onClick:info=>{if(info.object)clickStreet(info.object);}});
 }
+function boundaryFill(op){
+  return new deck.PolygonLayer({id:'nbhd-fill',data:BOUNDARIES,pickable:true,opacity:op,
+    autoHighlight:true,highlightColor:[150,210,255,50],parameters:{depthTest:false},
+    getPolygon:d=>d.polygon,filled:true,stroked:true,lineJointRounded:true,lineCapRounded:true,
+    getFillColor:(d,{index})=>{const v=grayFor(index);return d.slug===areaSlug?[96,170,226,34]:[v,v,v,94];},
+    getLineColor:d=>d.slug===areaSlug?[140,226,255,255]:[212,220,234,150],
+    getLineWidth:d=>d.slug===areaSlug?2.6:1,lineWidthUnits:'pixels',lineWidthMinPixels:0.9,
+    updateTriggers:{getFillColor:areaSlug,getLineColor:areaSlug,getLineWidth:areaSlug},
+    onClick:info=>{if(info.object)selectArea(info.object.slug);}});
+}
+function boundaryLabels(op){
+  return new deck.TextLayer({id:'nbhd-labels',data:BOUNDARIES,pickable:true,opacity:op,
+    parameters:{depthTest:false},
+    getPosition:d=>d.label,getText:d=>d.name,
+    getSize:d=>d.slug===areaSlug?18:13,sizeUnits:'pixels',
+    getColor:d=>d.slug===areaSlug?[255,255,255,255]:[221,230,242,225],
+    fontFamily:'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',fontWeight:700,
+    fontSettings:{sdf:true},outlineWidth:2.6,outlineColor:[4,10,18,240],
+    getTextAnchor:'middle',getAlignmentBaseline:'center',billboard:true,characterSet:'auto',
+    updateTriggers:{getColor:areaSlug,getSize:areaSlug},
+    onClick:info=>{if(info.object)selectArea(info.object.slug);}});
+}
+function nbhdFill(){const op=overlayOpacity();return op<0.04?[]:[boundaryFill(op)];}
+function nbhdLabels(){const op=overlayOpacity();return op<0.04?[]:[boundaryLabels(op)];}
+function mapLayers(){return [baseLayer(), ...nbhdFill(), needsLayer(), ...nbhdLabels()];}
 const deckgl=new DeckGL({container:'map',
   initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0},
-  controller:true,layers:[baseLayer(),needsLayer()],
-  getTooltip:({object})=>object && {html:'<b>'+object.name+'</b> &middot; need '+object.score.toFixed(0),
+  controller:true,layers:mapLayers(),
+  onViewStateChange:({viewState})=>{curZoom=viewState.zoom; render();},
+  getTooltip:({object})=>object && object.path && {html:'<b>'+object.name+'</b> &middot; need '+object.score.toFixed(0),
     style:{background:'rgba(6,14,22,.95)',color:'#e7f1ff',fontSize:'12px',padding:'6px 9px',borderRadius:'6px',border:'1px solid rgba(116,215,255,.5)'}},
   getCursor:({isHovering})=>isHovering?'pointer':'grab'});
-function render(){deckgl.setProps({layers:[baseLayer(),needsLayer()]});}
+if(BOUNDARIES.length>1 && BOUNDS){
+  try{
+    const vp=new deck.WebMercatorViewport({width:window.innerWidth,height:window.innerHeight});
+    const fitted=vp.fitBounds(BOUNDS,{padding:{top:70,bottom:96,left:80,right:76}});
+    curZoom=Math.min(fitted.zoom,12.5);
+    deckgl.setProps({initialViewState:{longitude:fitted.longitude,latitude:fitted.latitude,zoom:curZoom,pitch:0,bearing:0}});
+  }catch(e){}
+}
+function render(){deckgl.setProps({layers:mapLayers()});}
 function selectArea(nextSlug){
   areaSlug = nextSlug;
   DATA = AREAS[areaSlug];
@@ -280,9 +323,12 @@ function selectArea(nextSlug){
   document.title='CitySim - Where do '+DATA.area_name+' streets need attention?';
   document.getElementById('areaName').textContent=DATA.area_name;
   document.getElementById('popup').style.display='none';
-  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0,transitionDuration:350}});
+  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0,transitionInterpolator:new deck.FlyToInterpolator({speed:1.8}),transitionDuration:'auto'}});
   render();
   renderSources();
+  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='none';
+  const bn=document.getElementById('banner'); if(bn) bn.style.display='';
+  const an=document.getElementById('areaName'); if(an) an.style.display='';
   document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
 }
 function bar(v){return '<div class="bar"><span style="width:'+Math.round(v*100)+'%"></span></div>';}
@@ -308,6 +354,12 @@ document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{
 const areaButtons=document.getElementById('areaButtons');
 AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>selectArea(slug);areaButtons.appendChild(b);});
 document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
+if(BOUNDARIES.length>1){
+  const aw=document.getElementById('areaWrap'); if(aw) aw.style.display='none';
+  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='block';
+  const bn=document.getElementById('banner'); if(bn) bn.style.display='none';
+  const an=document.getElementById('areaName'); if(an) an.style.display='none';
+}
 const btn=document.getElementById('srcBtn'), panel=document.getElementById('srcPanel');
 function renderSources(){
 let html='<h3>Data sources</h3>';

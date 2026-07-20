@@ -1,0 +1,87 @@
+{
+  "annual_benefits_usd": {
+    "total": 1095530.8128086973,
+    "travel_time": 0.0,
+    "vehicle_damage": 1095530.8128086973
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 21.400848055492123,
+  "cost_usd": 49700.0,
+  "daily_benefits_usd": {
+    "total": 3651.769376028991,
+    "travel_time": 0.0,
+    "vehicle_damage": 3651.769376028991
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 1063622.1483579585
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\belmont_cragin\\output_baseline",
+    "daily_vht_baseline": 27349.880555555515,
+    "daily_vht_fixed": 27668.830555555753,
+    "daily_vmt_baseline": 485004.3309572077,
+    "daily_vmt_fixed": 484888.6067863662,
+    "daily_vmt_pothole_links_baseline": 36517.693760289905,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\belmont_cragin\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 497
+  },
+  "net_benefit_usd": 1013922.1483579585,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 0.0,
+    "mean_trip_minutes_delta": -0.09030294450735976,
+    "median_trip_minutes_delta": 0.033333333333333215,
+    "stuck_trips_delta_scaled": 0.0,
+    "vht_delta_hours": -318.9500000002372,
+    "vmt_delta_miles": 115.72417084150948
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 21192.0,
+      "arrivals_scaled": 211920.0,
+      "completed_trips_sample": 21192.0,
+      "completed_trips_scaled": 211920.0,
+      "completed_vmt_scaled": 485069.8359082956,
+      "completion_rate": 1.0,
+      "departures_sample": 21192.0,
+      "departures_scaled": 211920.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.743454290927395,
+      "median_trip_minutes": 7.0,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\belmont_cragin\\output_baseline",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 27349.880555555515,
+      "vmt": 485004.3309572077
+    },
+    "fixed": {
+      "arrivals_sample": 21192.0,
+      "arrivals_scaled": 211920.0,
+      "completed_trips_sample": 21192.0,
+      "completed_trips_scaled": 211920.0,
+      "completed_vmt_scaled": 484953.732701026,
+      "completion_rate": 1.0,
+      "departures_sample": 21192.0,
+      "departures_scaled": 211920.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.833757235434755,
+      "median_trip_minutes": 6.966666666666667,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\belmont_cragin\\output_fixed",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 27668.830555555753,
+      "vmt": 484888.6067863662
+    },
+    "warnings": []
+  }
+}

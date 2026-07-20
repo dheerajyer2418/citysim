@@ -46,6 +46,54 @@ areas:
           annual_days: 300
           annual_bicycle_crashes_baseline: 8.0
           separated_lane_crash_reduction_factor: 0.45
+  avondale:
+    scenario_slug: "avondale"
+    boundary:
+      community_area_id: 21
+      name: "Avondale"
+      buffer_m: 1500
+  humboldt_park:
+    scenario_slug: "humboldt_park"
+    boundary:
+      community_area_id: 23
+      name: "Humboldt Park"
+      buffer_m: 1500
+  west_town:
+    scenario_slug: "west_town"
+    boundary:
+      community_area_id: 24
+      name: "West Town"
+      buffer_m: 1500
+  lincoln_park:
+    scenario_slug: "lincoln_park"
+    boundary:
+      community_area_id: 7
+      name: "Lincoln Park"
+      buffer_m: 1500
+  near_north_side:
+    scenario_slug: "near_north_side"
+    boundary:
+      community_area_id: 8
+      name: "Near North Side"
+      buffer_m: 1500
+  belmont_cragin:
+    scenario_slug: "belmont_cragin"
+    boundary:
+      community_area_id: 19
+      name: "Belmont Cragin"
+      buffer_m: 1500
+  irving_park:
+    scenario_slug: "irving_park"
+    boundary:
+      community_area_id: 16
+      name: "Irving Park"
+      buffer_m: 1500
+  lincoln_square:
+    scenario_slug: "lincoln_square"
+    boundary:
+      community_area_id: 4
+      name: "Lincoln Square"
+      buffer_m: 1500
 
 crs: "EPSG:26971"
 

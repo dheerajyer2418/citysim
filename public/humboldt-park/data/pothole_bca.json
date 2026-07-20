@@ -1,0 +1,90 @@
+{
+  "annual_benefits_usd": {
+    "total": 634892.7244189559,
+    "travel_time": 0.0,
+    "vehicle_damage": 634892.7244189559
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 18.735583687518986,
+  "cost_usd": 32900.0,
+  "daily_benefits_usd": {
+    "total": 2116.3090813965196,
+    "travel_time": 0.0,
+    "vehicle_damage": 2116.3090813965196
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 616400.7033193746
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\humboldt_park\\output_baseline",
+    "daily_vht_baseline": 39452.78888888905,
+    "daily_vht_fixed": 39955.40277777796,
+    "daily_vmt_baseline": 485874.97141692584,
+    "daily_vmt_fixed": 486064.2410820793,
+    "daily_vmt_pothole_links_baseline": 21163.090813965195,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\humboldt_park\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 329
+  },
+  "net_benefit_usd": 583500.7033193746,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 10.0,
+    "mean_trip_minutes_delta": -0.13903699752623488,
+    "median_trip_minutes_delta": 0.016666666666667496,
+    "stuck_trips_delta_scaled": -10.0,
+    "vht_delta_hours": -502.6138888889109,
+    "vmt_delta_miles": -189.2696651534643
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 21769.0,
+      "arrivals_scaled": 217690.0,
+      "completed_trips_sample": 21769.0,
+      "completed_trips_scaled": 217690.0,
+      "completed_vmt_scaled": 485942.0235822795,
+      "completion_rate": 0.9975712583631198,
+      "departures_sample": 21822.0,
+      "departures_scaled": 218220.0,
+      "iteration": 10,
+      "mean_trip_minutes": 10.874028817737761,
+      "median_trip_minutes": 7.216666666666667,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\humboldt_park\\output_baseline",
+      "stuck_rate": 0.0024287416368802125,
+      "stuck_sample": 53.0,
+      "stuck_scaled": 530.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 39452.78888888905,
+      "vmt": 485874.97141692584
+    },
+    "fixed": {
+      "arrivals_sample": 21768.0,
+      "arrivals_scaled": 217680.0,
+      "completed_trips_sample": 21768.0,
+      "completed_trips_scaled": 217680.0,
+      "completed_vmt_scaled": 486130.7837230573,
+      "completion_rate": 0.9975254330492164,
+      "departures_sample": 21822.0,
+      "departures_scaled": 218220.0,
+      "iteration": 10,
+      "mean_trip_minutes": 11.013065815263996,
+      "median_trip_minutes": 7.199999999999999,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\humboldt_park\\output_fixed",
+      "stuck_rate": 0.002474566950783613,
+      "stuck_sample": 54.0,
+      "stuck_scaled": 540.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 39955.40277777796,
+      "vmt": 486064.2410820793
+    },
+    "warnings": [
+      "baseline has 53 sampled stuck/lost trips.",
+      "fixed has 54 sampled stuck/lost trips."
+    ]
+  }
+}

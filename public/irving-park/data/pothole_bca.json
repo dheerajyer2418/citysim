@@ -1,0 +1,87 @@
+{
+  "annual_benefits_usd": {
+    "total": 2131632.6167750065,
+    "travel_time": 1450192.9166678202,
+    "vehicle_damage": 681439.7001071866
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 50.47673731411334,
+  "cost_usd": 41000.0,
+  "daily_benefits_usd": {
+    "total": 7105.442055916688,
+    "travel_time": 4833.976388892734,
+    "vehicle_damage": 2271.465667023955
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 2069546.229878647
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\irving_park\\output_baseline",
+    "daily_vht_baseline": 28189.72222222243,
+    "daily_vht_fixed": 27964.88611111114,
+    "daily_vmt_baseline": 525640.1303885371,
+    "daily_vmt_fixed": 525540.9160502708,
+    "daily_vmt_pothole_links_baseline": 22714.65667023955,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\irving_park\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 410
+  },
+  "net_benefit_usd": 2028546.229878647,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 0.0,
+    "mean_trip_minutes_delta": 0.05836109308529824,
+    "median_trip_minutes_delta": 0.016666666666667496,
+    "stuck_trips_delta_scaled": 0.0,
+    "vht_delta_hours": 224.83611111128994,
+    "vmt_delta_miles": 99.21433826629072
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 23115.0,
+      "arrivals_scaled": 231150.0,
+      "completed_trips_sample": 23115.0,
+      "completed_trips_scaled": 231150.0,
+      "completed_vmt_scaled": 525711.3146723136,
+      "completion_rate": 1.0,
+      "departures_sample": 23115.0,
+      "departures_scaled": 231150.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.317254308169298,
+      "median_trip_minutes": 6.700000000000001,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\irving_park\\output_baseline",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 28189.72222222243,
+      "vmt": 525640.1303885371
+    },
+    "fixed": {
+      "arrivals_sample": 23115.0,
+      "arrivals_scaled": 231150.0,
+      "completed_trips_sample": 23115.0,
+      "completed_trips_scaled": 231150.0,
+      "completed_vmt_scaled": 525611.8890678438,
+      "completion_rate": 1.0,
+      "departures_sample": 23115.0,
+      "departures_scaled": 231150.0,
+      "iteration": 10,
+      "mean_trip_minutes": 7.258893215084,
+      "median_trip_minutes": 6.683333333333334,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\irving_park\\output_fixed",
+      "stuck_rate": 0.0,
+      "stuck_sample": 0.0,
+      "stuck_scaled": 0.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 27964.88611111114,
+      "vmt": 525540.9160502708
+    },
+    "warnings": []
+  }
+}

@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE config SYSTEM "http://www.matsim.org/files/dtd/config_v2.dtd">
+<config>
+  <module name="global">
+    <param name="coordinateSystem" value="EPSG:26971"/>
+    <param name="numberOfThreads" value="4"/>
+  </module>
+
+  <module name="network">
+    <param name="inputNetworkFile" value="network_needs3_west-diversey-avenue.xml.gz"/>
+  </module>
+
+  <module name="plans">
+    <param name="inputPlansFile" value="plans.xml.gz"/>
+  </module>
+
+  <module name="controler">
+    <param name="outputDirectory" value="output_needs3_west-diversey-avenue"/>
+    <param name="firstIteration" value="0"/>
+    <!-- equilibration for validation; replanning spreads traffic & reduces stuck -->
+    <param name="lastIteration" value="10"/>
+    <param name="overwriteFiles" value="deleteDirectoryIfExists"/>
+    <param name="writeEventsInterval" value="10"/>
+    <param name="writePlansInterval" value="10"/>
+  </module>
+
+  <module name="qsim">
+    <param name="startTime" value="00:00:00"/>
+    <param name="endTime" value="30:00:00"/>
+    <param name="numberOfThreads" value="4"/>
+    <!-- 10% population sample -> scale link flow capacity to match. Storage is
+         kept higher because strict sampled storage can still over-constrain
+         shorter urban links. -->
+    <param name="flowCapacityFactor" value="0.1"/>
+    <!-- storage is NOT scaled to the 10% sample: full storage lets links hold
+         realistic queues so short links don't seed spurious circular deadlocks
+         (network mean V/C is only ~0.3 — gridlock was an artifact, not demand). -->
+    <param name="storageCapacityFactor" value="1.0"/>
+    <param name="mainMode" value="car"/>
+    <param name="snapshotStyle" value="queue"/>
+    <!-- deadlock-breaker for residual circular queue lock. Ten minutes avoids
+         treating normal urban spillback as stuck while still clearing true
+         deadlocks before the 30-hour simulation horizon. -->
+    <param name="removeStuckVehicles" value="true"/>
+    <param name="stuckTime" value="600.0"/>
+  </module>
+
+  <module name="scoring">
+    <param name="learningRate" value="1.0"/>
+    <param name="brainExpBeta" value="2.0"/>
+    <parameterset type="scoringParameters">
+      <param name="lateArrival" value="-18.0"/>
+      <param name="earlyDeparture" value="0.0"/>
+      <param name="performing" value="6.0"/>
+      <param name="waiting" value="0.0"/>
+      <parameterset type="modeParams">
+        <param name="mode" value="car"/>
+        <param name="marginalUtilityOfTraveling_util_hr" value="-6.0"/>
+        <param name="monetaryDistanceRate" value="-0.0002"/>
+      </parameterset>
+      <!-- Defining a custom scoringParameters set drops MATSim's built-in mode
+           params; re-declare the standard modes so config getters (e.g. pt
+           waiting utility) don't NPE, even though this v0 demand is car-only. -->
+      <parameterset type="modeParams">
+        <param name="mode" value="pt"/>
+        <param name="marginalUtilityOfTraveling_util_hr" value="-6.0"/>
+      </parameterset>
+      <parameterset type="modeParams">
+        <param name="mode" value="walk"/>
+        <param name="marginalUtilityOfTraveling_util_hr" value="-12.0"/>
+      </parameterset>
+      <parameterset type="modeParams">
+        <param name="mode" value="bike"/>
+        <param name="marginalUtilityOfTraveling_util_hr" value="-6.0"/>
+      </parameterset>
+      <parameterset type="modeParams">
+        <param name="mode" value="ride"/>
+        <param name="marginalUtilityOfTraveling_util_hr" value="-6.0"/>
+      </parameterset>
+      <parameterset type="activityParams">
+        <param name="activityType" value="home"/>
+        <param name="typicalDuration" value="12:00:00"/>
+      </parameterset>
+      <parameterset type="activityParams">
+        <param name="activityType" value="work"/>
+        <param name="typicalDuration" value="08:00:00"/>
+        <param name="openingTime" value="06:00:00"/>
+        <param name="closingTime" value="20:00:00"/>
+      </parameterset>
+      <parameterset type="activityParams">
+        <param name="activityType" value="shop"/>
+        <param name="typicalDuration" value="01:00:00"/>
+      </parameterset>
+      <parameterset type="activityParams">
+        <param name="activityType" value="other"/>
+        <param name="typicalDuration" value="02:00:00"/>
+      </parameterset>
+      <parameterset type="activityParams">
+        <param name="activityType" value="visit"/>
+        <param name="typicalDuration" value="02:00:00"/>
+      </parameterset>
+      <!-- Cordon boundary crossing for through/in-out trips; not a real activity,
+           so exclude from scoring to avoid biasing. -->
+      <parameterset type="activityParams">
+        <param name="activityType" value="gateway"/>
+        <param name="typicalDuration" value="12:00:00"/>
+        <param name="scoringThisActivityAtAll" value="false"/>
+      </parameterset>
+    </parameterset>
+  </module>
+
+  <module name="replanning">
+    <param name="maxAgentPlanMemorySize" value="5"/>
+    <parameterset type="strategysettings">
+      <param name="strategyName" value="ChangeExpBeta"/>
+      <param name="weight" value="0.8"/>
+    </parameterset>
+    <parameterset type="strategysettings">
+      <param name="strategyName" value="ReRoute"/>
+      <param name="weight" value="0.2"/>
+    </parameterset>
+  </module>
+
+  <module name="routing">
+    <param name="networkModes" value="car"/>
+  </module>
+</config>

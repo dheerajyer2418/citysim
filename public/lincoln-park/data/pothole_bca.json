@@ -1,0 +1,90 @@
+{
+  "annual_benefits_usd": {
+    "total": 275858.6701316811,
+    "travel_time": 0.0,
+    "vehicle_damage": 275858.6701316811
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 43.19741154583167,
+  "cost_usd": 6200.0,
+  "daily_benefits_usd": {
+    "total": 919.528900438937,
+    "travel_time": 0.0,
+    "vehicle_damage": 919.528900438937
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 267823.95158415637
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_park\\output_baseline",
+    "daily_vht_baseline": 116230.7888888894,
+    "daily_vht_fixed": 118011.88055555592,
+    "daily_vmt_baseline": 640631.1018651044,
+    "daily_vmt_fixed": 640697.3151793487,
+    "daily_vmt_pothole_links_baseline": 9195.28900438937,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_park\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 62
+  },
+  "net_benefit_usd": 261623.95158415637,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 400.0,
+    "mean_trip_minutes_delta": -0.4248304818684048,
+    "median_trip_minutes_delta": 0.01666666666666572,
+    "stuck_trips_delta_scaled": -400.0,
+    "vht_delta_hours": -1781.091666666529,
+    "vmt_delta_miles": -66.21331424429081
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 27576.0,
+      "arrivals_scaled": 275760.0,
+      "completed_trips_sample": 27576.0,
+      "completed_trips_scaled": 275760.0,
+      "completed_vmt_scaled": 640715.0615406028,
+      "completion_rate": 0.9705416534684828,
+      "departures_sample": 28413.0,
+      "departures_scaled": 284130.0,
+      "iteration": 10,
+      "mean_trip_minutes": 25.28955371820907,
+      "median_trip_minutes": 7.933333333333333,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_park\\output_baseline",
+      "stuck_rate": 0.029458346531517264,
+      "stuck_sample": 837.0,
+      "stuck_scaled": 8370.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 116230.7888888894,
+      "vmt": 640631.1018651044
+    },
+    "fixed": {
+      "arrivals_sample": 27536.0,
+      "arrivals_scaled": 275360.0,
+      "completed_trips_sample": 27536.0,
+      "completed_trips_scaled": 275360.0,
+      "completed_vmt_scaled": 640780.4794997217,
+      "completion_rate": 0.9691338471826276,
+      "departures_sample": 28413.0,
+      "departures_scaled": 284130.0,
+      "iteration": 10,
+      "mean_trip_minutes": 25.714384200077475,
+      "median_trip_minutes": 7.916666666666667,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_park\\output_fixed",
+      "stuck_rate": 0.03086615281737233,
+      "stuck_sample": 877.0,
+      "stuck_scaled": 8770.0,
+      "vehicle_aborts_sample": 78.0,
+      "vehicle_aborts_scaled": 780.0,
+      "vht": 118011.88055555592,
+      "vmt": 640697.3151793487
+    },
+    "warnings": [
+      "baseline has 837 sampled stuck/lost trips.",
+      "fixed has 877 sampled stuck/lost trips."
+    ]
+  }
+}

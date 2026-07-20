@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>CitySim - Lincoln Square</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  body{margin:0;min-height:100vh;background:#0a0e14;color:#e7f1ff;font-family:system-ui,Segoe UI,Roboto,sans-serif;display:flex;align-items:center;justify-content:center;}
+  .wrap{max-width:720px;padding:40px 24px;}
+  h1{font-size:30px;margin:0 0 6px 0;}
+  .sub{color:#9fb7cc;font-size:15px;margin:0 0 22px 0;}
+  p{line-height:1.55;color:#c6d9ec;font-size:14px;}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:26px 0;}
+  a.card{display:block;text-decoration:none;color:#e7f1ff;background:#12233a;border:1px solid #2b5b78;border-radius:12px;padding:20px;transition:border-color .15s;}
+  a.card:hover{border-color:#74d7ff;}
+  a.card b{display:block;font-size:17px;margin-bottom:6px;}
+  a.card span{font-size:13px;color:#a9bed2;line-height:1.4;}
+  .back{color:#8fd6ff;text-decoration:none;font-size:13px;}
+  @media(max-width:560px){.cards{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">All neighborhoods</a>
+  <h1>CitySim &mdash; Lincoln Square</h1>
+  <p class="sub">Which streets need attention, and what happens if we change them?</p>
+  <p>CitySim scores every street in Lincoln Square, Chicago and pairs it with an agent-based traffic model for testing changes like bike lanes or road diets.</p>
+  <div class="cards">
+    <a class="card" href="needs_map.html"><b>Which streets need attention? &rarr;</b><span>A 0-100 priority map built from public crash, pothole, and traffic data.</span></a>
+    <a class="card" href="live_traffic.html"><b>Test a street change &rarr;</b><span>Pick a scenario and watch before/after traffic on a simulated day.</span></a>
+  </div>
+</div>
+<button id="srcBtn" style="position:absolute;bottom:78px;left:16px;z-index:60;background:#12283c;color:#dff;border:1px solid #3c6f8c;border-radius:7px;padding:8px 12px;font:13px system-ui;cursor:pointer;">Sources</button><div id="srcPanel" style="display:none;position:absolute;bottom:120px;left:16px;z-index:60;width:min(320px,calc(100vw - 32px));background:rgba(6,14,22,.96);border:1px solid rgba(120,160,210,.3);border-radius:8px;padding:12px 14px;font:12px/1.6 system-ui;color:#e7f1ff;"><h3 style="margin:0 0 6px 0;font-size:13px;">Data sources</h3><div><a href="https://www.openstreetmap.org" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">OpenStreetMap (road network)</a></div><div><a href="https://www.cmap.illinois.gov" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">CMAP c24q4 travel demand model</a></div><div><a href="https://data.cityofchicago.org/d/85ca-t3if" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">Chicago Traffic Crashes (85ca-t3if)</a></div><div><a href="https://data.cityofchicago.org/d/7as2-ds3y" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">Chicago 311 Pot Holes (7as2-ds3y)</a></div><div><a href="https://data.cityofchicago.org/d/gc7y-n4xa" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">Chicago Avg Daily Traffic Counts (gc7y-n4xa)</a></div><div><a href="https://www.matsim.org" target="_blank" rel="noopener" style="color:#8fd6ff;text-decoration:none;">MATSim 2024.0 traffic simulation engine</a></div><div style="color:#a9bed2;font-size:11px;margin-top:8px;">Planning tool built from public data. Sketch-level estimates; before/after differences are more reliable than absolute values.</div></div><script>(function(){var b=document.getElementById('srcBtn'),p=document.getElementById('srcPanel');b.onclick=function(){p.style.display=(p.style.display==='block'?'none':'block');};})();</script>
+</body>
+</html>

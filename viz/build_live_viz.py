@@ -201,7 +201,7 @@ HTML = """<!DOCTYPE html>
 <style>
   html,body,#map{margin:0;width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,sans-serif;}
   #hud{position:absolute;top:14px;left:16px;z-index:5;color:#e8f0ff;min-width:250px;}
-  #areaName{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:6;background:rgba(6,14,22,.74);border:1px solid rgba(116,215,255,.42);border-radius:8px;padding:7px 14px;color:#fff;font-size:18px;font-weight:700;letter-spacing:0;text-shadow:0 1px 8px rgba(0,0,0,.75);pointer-events:none;}
+  #areaName{position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:6;background:rgba(6,14,22,.74);border:1px solid rgba(116,215,255,.42);border-radius:8px;padding:7px 14px;color:#fff;font-size:18px;font-weight:700;letter-spacing:0;text-shadow:0 1px 8px rgba(0,0,0,.75);pointer-events:none;}
   #clock{font-size:30px;font-weight:700;letter-spacing:0;text-shadow:0 0 12px rgba(80,180,255,.6);}
   #sub{font-size:12px;opacity:.72;margin-top:2px;margin-bottom:10px;}
   #stats{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;font-size:12px;}
@@ -246,6 +246,9 @@ HTML = """<!DOCTYPE html>
   #areaButtons{display:flex;gap:5px;}
   #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;}
   #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
+  #nbhdHint{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:8;display:none;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:999px;padding:9px 18px;font-size:13.5px;color:#e7f3ff;backdrop-filter:blur(5px);box-shadow:0 8px 26px rgba(0,0,0,.45);pointer-events:none;letter-spacing:.01em;animation:hintIn .5s ease both;}
+  #nbhdHint b{color:#8fd6ff;font-weight:700;}
+  @keyframes hintIn{from{opacity:0;transform:translate(-50%,-6px);}to{opacity:1;transform:translate(-50%,0);}}
   @media (max-width:760px){
     #hud{left:10px;top:10px;min-width:0;width:min(310px,calc(100vw - 20px));}
     #areaName{top:126px;font-size:15px;}
@@ -260,6 +263,7 @@ HTML = """<!DOCTYPE html>
 </head>
 <body>
 <div id="map"></div>
+<div id="nbhdHint">Pick a <b>neighborhood</b> to explore</div>
 <div id="areaName"></div>
 <div id="hud"><div class="pill">
   <div id="clock">--:--</div>
@@ -333,6 +337,11 @@ const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
 let areaSlug = localStorage.getItem('citysim_live_area') || ROOT_DATA.default_area || AREA_ORDER[0];
 if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
 let DATA = AREAS[areaSlug];
+const BOUNDARIES = ROOT_DATA.boundaries || [];
+const BOUNDS = ROOT_DATA.bounds || null;
+let curZoom = 11;
+function grayFor(i){const n=Math.max(1,BOUNDARIES.length-1);const v=Math.round(64+72*(i/n));return v;}
+function overlayOpacity(){return BOUNDARIES.length>1?Math.max(0,Math.min(1,(12.7-curZoom)/1.5)):0;}
 const {DeckGL, TileLayer, BitmapLayer, PathLayer, ScatterplotLayer} = deck;
 
 let scen = 0;
@@ -414,13 +423,47 @@ function affectedLayer(s){
     rounded:true
   });
 }
-
+function boundaryFill(op){
+  return new deck.PolygonLayer({id:'nbhd-fill',data:BOUNDARIES,pickable:true,opacity:op,
+    autoHighlight:true,highlightColor:[150,210,255,50],parameters:{depthTest:false},
+    getPolygon:d=>d.polygon,filled:true,stroked:true,lineJointRounded:true,lineCapRounded:true,
+    getFillColor:(d,{index})=>{const v=grayFor(index);return d.slug===areaSlug?[96,170,226,30]:[v,v,v,92];},
+    getLineColor:d=>d.slug===areaSlug?[140,226,255,255]:[212,220,234,150],
+    getLineWidth:d=>d.slug===areaSlug?2.6:1,lineWidthUnits:'pixels',lineWidthMinPixels:0.9,
+    updateTriggers:{getFillColor:areaSlug,getLineColor:areaSlug,getLineWidth:areaSlug},
+    onClick:info=>{if(info.object)switchArea(info.object.slug);}});
+}
+function boundaryLabels(op){
+  return new deck.TextLayer({id:'nbhd-labels',data:BOUNDARIES,pickable:true,opacity:op,
+    parameters:{depthTest:false},
+    getPosition:d=>d.label,getText:d=>d.name,
+    getSize:d=>d.slug===areaSlug?18:13,sizeUnits:'pixels',
+    getColor:d=>d.slug===areaSlug?[255,255,255,255]:[221,230,242,225],
+    fontFamily:'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',fontWeight:700,
+    fontSettings:{sdf:true},outlineWidth:2.6,outlineColor:[4,10,18,240],
+    getTextAnchor:'middle',getAlignmentBaseline:'center',billboard:true,characterSet:'auto',
+    updateTriggers:{getColor:areaSlug,getSize:areaSlug},
+    onClick:info=>{if(info.object)switchArea(info.object.slug);}});
+}
+function nbhdFill(){const op=overlayOpacity();return op<0.04?[]:[boundaryFill(op)];}
+function nbhdLabels(){const op=overlayOpacity();return op<0.04?[]:[boundaryLabels(op)];}
+const NBHD_ON = BOUNDARIES.length>1;
 const deckgl = new DeckGL({
   container:'map',
   initialViewState:{longitude:DATA.center[0], latitude:DATA.center[1], zoom:13, pitch:50, bearing:-15},
   controller:true,
-  layers:[basemap, roadsLayer(), affectedLayer(DATA.scenarios[0]), vehicleLayer([])]
+  getCursor:({isHovering})=>isHovering?'pointer':'grab',
+  onViewStateChange:({viewState})=>{curZoom=viewState.zoom;},
+  layers:[basemap, ...nbhdFill(), roadsLayer(), affectedLayer(DATA.scenarios[0]), vehicleLayer([]), ...nbhdLabels()]
 });
+if(NBHD_ON && BOUNDS){
+  try{
+    const vp=new deck.WebMercatorViewport({width:window.innerWidth,height:window.innerHeight});
+    const fitted=vp.fitBounds(BOUNDS,{padding:{top:70,bottom:118,left:330,right:340}});
+    curZoom=Math.min(fitted.zoom,12.5);
+    deckgl.setProps({initialViewState:{longitude:fitted.longitude,latitude:fitted.latitude,zoom:curZoom,pitch:0,bearing:0}});
+  }catch(e){}
+}
 
 const clock=document.getElementById('clock'), scrub=document.getElementById('scrub');
 const playBtn=document.getElementById('play'), speedEl=document.getElementById('speed');
@@ -435,6 +478,11 @@ const sumStuck=document.getElementById('sumStuck'), sumLinks=document.getElement
 const sumWarn=document.getElementById('summaryWarn');
 
 AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>switchArea(slug);areaButtons.appendChild(b);});
+if(NBHD_ON){
+  const aw=document.getElementById('areaWrap'); if(aw) aw.style.display='none';
+  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='block';
+  const an=document.getElementById('areaName'); if(an) an.style.display='none';
+}
 
 function fmtNumber(value,digits=0){return value===null||value===undefined||Number.isNaN(Number(value))?'--':Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});}
 function renderSummary(){
@@ -499,8 +547,10 @@ function switchArea(nextSlug){
   populateInterventions();
   populateScenarios();
   currentTime=DATA.scenarios[scen].tmin;
-  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13,pitch:50,bearing:-15,transitionDuration:350}});
+  deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13,pitch:50,bearing:-15,transitionInterpolator:new deck.FlyToInterpolator({speed:1.8}),transitionDuration:'auto'}});
   refreshScen();
+  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='none';
+  const an=document.getElementById('areaName'); if(an) an.style.display='';
   document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
 }
 function fmt(s){s=Math.floor(s)%86400;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0');}
@@ -535,7 +585,7 @@ function frame(now){
   doneEl.textContent=completed.toLocaleString();
   lostEl.textContent=stuck.toLocaleString();
   shownEl.textContent=points.length.toLocaleString();
-  deckgl.setProps({layers:[basemap, roadsLayer(), affectedLayer(s), vehicleLayer(points)]});
+  deckgl.setProps({layers:[basemap, ...nbhdFill(), roadsLayer(), affectedLayer(s), vehicleLayer(points), ...nbhdLabels()]});
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

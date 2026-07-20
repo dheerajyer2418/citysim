@@ -1,0 +1,90 @@
+{
+  "annual_benefits_usd": {
+    "total": 361932.1586362518,
+    "travel_time": 0.0,
+    "vehicle_damage": 361932.1586362518
+  },
+  "bca_reliable": true,
+  "benefit_cost_ratio": 38.194613617164606,
+  "cost_usd": 9200.0,
+  "daily_benefits_usd": {
+    "total": 1206.440528787506,
+    "travel_time": 0.0,
+    "vehicle_damage": 1206.440528787506
+  },
+  "discounted_benefits_usd": {
+    "discount_factor_sum": 0.970873786407767,
+    "total": 351390.4452779144
+  },
+  "inputs": {
+    "analysis_period_years": 1,
+    "annual_days": 300.0,
+    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_square\\output_baseline",
+    "daily_vht_baseline": 43279.10000000011,
+    "daily_vht_fixed": 43915.68611111096,
+    "daily_vmt_baseline": 553759.6126123447,
+    "daily_vmt_fixed": 553816.9030362662,
+    "daily_vmt_pothole_links_baseline": 12064.40528787506,
+    "discount_rate": 0.03,
+    "fixed_output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_square\\output_fixed",
+    "sample_fraction": 0.1,
+    "total_potholes": 92
+  },
+  "net_benefit_usd": 342190.4452779144,
+  "scenario_delta": {
+    "completed_trips_delta_scaled": 20.0,
+    "mean_trip_minutes_delta": -0.14726844805931805,
+    "median_trip_minutes_delta": 0.016666666666666607,
+    "stuck_trips_delta_scaled": -20.0,
+    "vht_delta_hours": -636.5861111108534,
+    "vmt_delta_miles": -57.29042392154224
+  },
+  "scenario_health": {
+    "baseline": {
+      "arrivals_sample": 26073.0,
+      "arrivals_scaled": 260730.0,
+      "completed_trips_sample": 26073.0,
+      "completed_trips_scaled": 260730.0,
+      "completed_vmt_scaled": 553839.9683349241,
+      "completion_rate": 0.9991569266142939,
+      "departures_sample": 26095.0,
+      "departures_scaled": 260950.0,
+      "iteration": 10,
+      "mean_trip_minutes": 9.959521343918997,
+      "median_trip_minutes": 7.133333333333334,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_square\\output_baseline",
+      "stuck_rate": 0.0008430733857060739,
+      "stuck_sample": 22.0,
+      "stuck_scaled": 220.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 43279.10000000011,
+      "vmt": 553759.6126123447
+    },
+    "fixed": {
+      "arrivals_sample": 26071.0,
+      "arrivals_scaled": 260710.0,
+      "completed_trips_sample": 26071.0,
+      "completed_trips_scaled": 260710.0,
+      "completed_vmt_scaled": 553897.4700250537,
+      "completion_rate": 0.9990802835792297,
+      "departures_sample": 26095.0,
+      "departures_scaled": 260950.0,
+      "iteration": 10,
+      "mean_trip_minutes": 10.106789791978315,
+      "median_trip_minutes": 7.116666666666667,
+      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lincoln_square\\output_fixed",
+      "stuck_rate": 0.0009197164207702625,
+      "stuck_sample": 24.0,
+      "stuck_scaled": 240.0,
+      "vehicle_aborts_sample": 0.0,
+      "vehicle_aborts_scaled": 0.0,
+      "vht": 43915.68611111096,
+      "vmt": 553816.9030362662
+    },
+    "warnings": [
+      "baseline has 22 sampled stuck/lost trips.",
+      "fixed has 24 sampled stuck/lost trips."
+    ]
+  }
+}

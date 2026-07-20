@@ -16,6 +16,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from shapely.geometry import Point, shape
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT))
@@ -162,7 +164,9 @@ def _area_public_slug(area_slug: str) -> str:
 
 def main() -> None:
     PUBLIC.mkdir(parents=True, exist_ok=True)
-    areas = ("logan_square", "lake_view")
+    import yaml
+    with open(ROOT / "params.yaml", "r", encoding="utf-8") as _f:
+        areas = tuple((yaml.safe_load(_f) or {}).get("areas", {}).keys())
     for area in areas:
         cfg = load_config(area=area)
         slug = _area_public_slug(cfg.area_slug)
@@ -209,21 +213,90 @@ def main() -> None:
         cfg = load_config(area=area)
         slug = _area_public_slug(cfg.area_slug)
         area_dir = PUBLIC / slug
-        needs_payload = _extract_script_json(area_dir / "needs_map.html", "payload")
-        needs_payload["area_slug"] = cfg.area_slug
-        needs_payload["area_name"] = cfg.area_name
-        needs_areas[cfg.area_slug] = needs_payload
+        needs_path = area_dir / "needs_map.html"
+        if needs_path.exists():
+            needs_payload = _extract_script_json(needs_path, "payload")
+            needs_payload["area_slug"] = cfg.area_slug
+            needs_payload["area_name"] = cfg.area_name
+            needs_areas[cfg.area_slug] = needs_payload
+        else:
+            print(f"skip needs: {area} (no needs_map.html)")
 
-        live_payload = _extract_script_json(area_dir / "live_traffic.html", "trips-data")
-        live_payload["area_slug"] = cfg.area_slug
-        live_payload["area_name"] = cfg.area_name
-        live_payload["data_path"] = f"{slug}/data"
-        live_areas[cfg.area_slug] = live_payload
+        live_path = area_dir / "live_traffic.html"
+        if live_path.exists():
+            live_payload = _extract_script_json(live_path, "trips-data")
+            live_payload["area_slug"] = cfg.area_slug
+            live_payload["area_name"] = cfg.area_name
+            live_payload["data_path"] = f"{slug}/data"
+            live_areas[cfg.area_slug] = live_payload
+        else:
+            print(f"skip live: {area} (no live_traffic.html)")
 
+    needs_order = [a for a in areas if a in needs_areas]
+    live_order = [a for a in areas if a in live_areas]
+    boundaries_path = Path(__file__).resolve().parent / "community_area_boundaries.geojson"
+    boundaries_geojson = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    boundaries = {
+        str(feature["properties"]["area_numbe"]): shape(feature["geometry"])
+        for feature in boundaries_geojson["features"]
+    }
+    for area in areas:
+        cfg = load_config(area=area)
+        boundary = boundaries.get(str(cfg.boundary.community_area_id))
+        if boundary is None:
+            continue
+        if area in needs_areas:
+            needs_areas[area]["features"] = [
+                feature
+                for feature in needs_areas[area]["features"]
+                if boundary.contains(
+                    Point(*feature["path"][len(feature["path"]) // 2])
+                )
+            ]
+        if area in live_areas:
+            live_areas[area]["roads"] = [
+                road
+                for road in live_areas[area]["roads"]
+                if boundary.contains(Point(*road["path"][len(road["path"]) // 2]))
+            ]
+
+    def boundary_entries(order):
+        """Ordered neighborhood outlines + label points for the on-map selector."""
+        entries = []
+        minx = miny = float("inf")
+        maxx = maxy = float("-inf")
+        for a in order:
+            cfg_a = load_config(area=a)
+            geom = boundaries.get(str(cfg_a.boundary.community_area_id))
+            if geom is None:
+                continue
+            g = max(geom.geoms, key=lambda p: p.area) if geom.geom_type == "MultiPolygon" else geom
+            ring = [[round(float(x), 5), round(float(y), 5)] for x, y in g.exterior.coords]
+            rp = g.representative_point()
+            entries.append(
+                {
+                    "slug": a,
+                    "name": cfg_a.area_name,
+                    "polygon": ring,
+                    "label": [round(float(rp.x), 5), round(float(rp.y), 5)],
+                }
+            )
+            bx = g.bounds
+            minx, miny = min(minx, bx[0]), min(miny, bx[1])
+            maxx, maxy = max(maxx, bx[2]), max(maxy, bx[3])
+        bounds = [[minx, miny], [maxx, maxy]] if entries else None
+        return entries, bounds
+
+    needs_boundaries, needs_bounds = boundary_entries(needs_order)
+    live_boundaries, live_bounds = boundary_entries(live_order)
+
+    default_needs = default_area if default_area in needs_order else needs_order[0]
     unified_needs = {
         "areas": needs_areas,
-        "area_order": list(areas),
-        "default_area": default_area,
+        "area_order": needs_order,
+        "default_area": default_needs,
+        "boundaries": needs_boundaries,
+        "bounds": needs_bounds,
     }
     needs_template = build_needs_map.HTML.replace("Logan Square", "CitySim")
     (PUBLIC / "needs_map.html").write_text(
@@ -233,10 +306,13 @@ def main() -> None:
 
     import build_live_viz  # noqa: E402
 
+    default_live = default_area if default_area in live_order else (live_order[0] if live_order else default_area)
     unified_live = {
         "areas": live_areas,
-        "area_order": list(areas),
-        "default_area": default_area,
+        "area_order": live_order,
+        "default_area": default_live,
+        "boundaries": live_boundaries,
+        "bounds": live_bounds,
     }
     live_template = build_live_viz.HTML.replace("Logan Square", "CitySim")
     live_html = live_template.replace("__DATA__", json.dumps(unified_live, separators=(",", ":")))

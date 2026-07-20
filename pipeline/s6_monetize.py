@@ -402,6 +402,10 @@ def _write_bike_lane_bca(cfg: Any, fixed: dict[str, Any]) -> dict[str, Any] | No
 
     scenario_dir = getattr(cfg, "scenario_dir", Path(cfg.project_root) / "scenarios" / "logan_square")
     bike_lane_dir = scenario_dir / "output_bike_lane"
+    if not (bike_lane_dir / "output_events.xml.gz").exists():
+        # No bike-lane MATSim run for this area (e.g. areas that only ran the
+        # needs-driven road-diet scenarios); skip the bike-lane BCA gracefully.
+        return None
     bike_lane_links_csv = cfg.data_interim / "bike_lane_links.csv"
     output_json = cfg.data_processed / "bike_lane_bca.json"
 
