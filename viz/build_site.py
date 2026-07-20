@@ -107,7 +107,7 @@ INDEX_HTML = """<!DOCTYPE html>
 <div class="wrap">
   <h1>CitySim</h1>
   <p class="sub">Where do the streets need attention, and what happens if we change them?</p>
-  <p>Use one shared toolset for every neighborhood. Switch between Logan Square and Lake View inside each map.</p>
+  <p>Use one shared toolset for every neighborhood. Switch between __NBHD_COUNT__ Chicago neighborhoods right inside each map.</p>
   <div class="cards">
     <a class="card" href="needs_map.html"><b>Which streets need attention? &rarr;</b><span>A 0-100 priority map built from public crash, pothole, and traffic data.</span></a>
     <a class="card" href="live_traffic.html"><b>Test a street change &rarr;</b><span>Watch simulated traffic and switch neighborhoods in the same view.</span></a>
@@ -319,7 +319,7 @@ def main() -> None:
     (PUBLIC / "live_traffic.html").write_text(_inject_sources(live_html), encoding="utf-8")
 
     (PUBLIC / "index.html").write_text(
-        INDEX_HTML.replace("__SOURCES__", _sources_widget()),
+        INDEX_HTML.replace("__SOURCES__", _sources_widget()).replace("__NBHD_COUNT__", str(len(needs_order))),
         encoding="utf-8",
     )
 
