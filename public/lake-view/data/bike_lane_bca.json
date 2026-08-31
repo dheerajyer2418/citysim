@@ -23,8 +23,8 @@
   "inputs": {
     "analysis_period_years": 10,
     "annual_days": 300.0,
-    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
-    "bike_lane_output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_bike_lane",
+    "baseline_output_dir": "output_fixed",
+    "bike_lane_output_dir": "output_bike_lane",
     "discount_rate": 0.03,
     "facility_miles": 3.901577287702319,
     "sample_fraction": 0.1
@@ -61,7 +61,7 @@
       "iteration": 10,
       "mean_trip_minutes": 7.275928958697783,
       "median_trip_minutes": 6.716666666666668,
-      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_fixed",
+      "output_dir": "output_fixed",
       "stuck_rate": 0.0,
       "stuck_sample": 0.0,
       "stuck_scaled": 0.0,
@@ -82,7 +82,7 @@
       "iteration": 10,
       "mean_trip_minutes": 7.339845039143436,
       "median_trip_minutes": 6.75,
-      "output_dir": "D:\\Projects\\CitySim\\scenarios\\lake_view\\output_bike_lane",
+      "output_dir": "output_bike_lane",
       "stuck_rate": 0.0,
       "stuck_sample": 0.0,
       "stuck_scaled": 0.0,

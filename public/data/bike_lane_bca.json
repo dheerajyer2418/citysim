@@ -23,8 +23,8 @@
   "inputs": {
     "analysis_period_years": 10,
     "annual_days": 300.0,
-    "baseline_output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_fixed",
-    "bike_lane_output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_bike_lane",
+    "baseline_output_dir": "output_fixed",
+    "bike_lane_output_dir": "output_bike_lane",
     "discount_rate": 0.03,
     "facility_miles": 5.122901264428239,
     "sample_fraction": 0.1
@@ -61,7 +61,7 @@
       "iteration": 10,
       "mean_trip_minutes": 29.94125787770397,
       "median_trip_minutes": 9.0,
-      "output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_fixed",
+      "output_dir": "output_fixed",
       "stuck_rate": 0.023804905085215464,
       "stuck_sample": 859.0,
       "stuck_scaled": 8590.0,
@@ -82,7 +82,7 @@
       "iteration": 10,
       "mean_trip_minutes": 32.18694943597302,
       "median_trip_minutes": 9.083333333333332,
-      "output_dir": "D:\\Projects\\CitySim\\scenarios\\logan_square\\output_bike_lane",
+      "output_dir": "output_bike_lane",
       "stuck_rate": 0.022253013717611195,
       "stuck_sample": 803.0,
       "stuck_scaled": 8030.0,

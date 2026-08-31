@@ -272,7 +272,7 @@ def _scenario_summary(output_dir: Path, sample_fraction: float) -> dict[str, Any
     trips = _read_trip_stats(output_dir, sample_fraction)
     health = _read_event_health(output_dir, sample_fraction)
     return {
-        "output_dir": str(output_dir),
+        "output_dir": output_dir.name,
         "iteration": int(totals["iteration"]),
         "vht": totals["vht"],
         "vmt": totals["vmt"],
@@ -433,8 +433,8 @@ def _write_bike_lane_bca(cfg: Any, fixed: dict[str, Any]) -> dict[str, Any] | No
     )
     payload = {
         "inputs": {
-            "baseline_output_dir": str(scenario_dir / "output_fixed"),
-            "bike_lane_output_dir": str(bike_lane_dir),
+            "baseline_output_dir": (scenario_dir / "output_fixed").name,
+            "bike_lane_output_dir": bike_lane_dir.name,
             "sample_fraction": sample_fraction,
             "annual_days": annual_days,
             "analysis_period_years": period_years,
@@ -548,8 +548,8 @@ def run(cfg: Any) -> None:
     )
     payload = {
         "inputs": {
-            "baseline_output_dir": str(baseline_dir),
-            "fixed_output_dir": str(fixed_dir),
+            "baseline_output_dir": baseline_dir.name,
+            "fixed_output_dir": fixed_dir.name,
             "sample_fraction": sample_fraction,
             "annual_days": annual_days,
             "analysis_period_years": period_years,
