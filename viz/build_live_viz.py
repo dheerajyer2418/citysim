@@ -337,6 +337,31 @@ const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
 let areaSlug = localStorage.getItem('citysim_live_area') || ROOT_DATA.default_area || AREA_ORDER[0];
 if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
 let DATA = AREAS[areaSlug];
+const liveRequests = new Map();
+async function ensureLive(slug){
+  const area = AREAS[slug];
+  if(area.roads !== undefined) return;
+  if(!liveRequests.has(slug)){
+    liveRequests.set(slug, (async()=>{
+      try{
+        const response = await fetch(area.data_url);
+        if(!response.ok) throw new Error('HTTP '+response.status);
+        const payload = await response.json();
+        area.roads = payload.roads || [];
+        area.scenarios.forEach(s=>{
+          const scenario = (payload.scenarios || []).find(item=>item.scenario_id===s.scenario_id);
+          s.trips = (scenario && scenario.trips) || [];
+        });
+      }catch(error){
+        console.warn('Could not load live data for '+slug, error);
+        area.roads = [];
+        area.scenarios.forEach(s=>{s.trips = [];});
+      }
+    })());
+  }
+  await liveRequests.get(slug);
+}
+let areaSelection = 0;
 const BOUNDARIES = ROOT_DATA.boundaries || [];
 const BOUNDS = ROOT_DATA.bounds || null;
 let curZoom = 11;
@@ -350,8 +375,10 @@ let playing = true;
 let speed = 120;
 
 const basemap = new TileLayer({
-  id:'carto-dark',
-  data:'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  id:'esri-dark',
+  // Keyless Esri basemap; CARTO's raster tiles now return an "API key required"
+  // placeholder. Esri uses {z}/{y}/{x} order (y before x).
+  data:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
   minZoom:0,
   maxZoom:19,
   tileSize:256,
@@ -365,7 +392,7 @@ const basemap = new TileLayer({
 function roadsLayer(){
   return new PathLayer({
   id:'roads',
-  data:DATA.roads,
+  data:DATA.roads || [],
   getPath:d=>d.path,
   getColor:d=>d.capacity>=1500 ? [132,154,172,158] : [70,86,102,108],
   getWidth:d=>d.capacity>=1500 ? 3.0 : 1.4,
@@ -532,14 +559,19 @@ function populateScenarios(){
 }
 function refreshScen(){
   const s=DATA.scenarios[scen];
-  scrub.min=s.tmin;scrub.max=s.tmax;ntrips.textContent=s.name+' - '+s.trips.length+' sampled vehicles';renderSummary();
+  scrub.min=s.tmin;scrub.max=s.tmax;ntrips.textContent=s.name+' - '+(s.trips || []).length+' sampled vehicles';renderSummary();
   document.title='CitySim - '+DATA.area_name+' Live Traffic';
   document.getElementById('areaName').textContent=DATA.area_name;
   document.getElementById('sub').textContent='CitySim - '+DATA.area_name+' - simulated day (10% sample)';
   document.querySelector('#infoPanel p').textContent='This is a traffic simulation for '+DATA.area_name+'. Each dot is a sampled car trip moving through the road network during a simulated day.';
   document.getElementById('downloadCsv').href=(DATA.data_path||'data')+'/scenario_comparison.csv';
 }
-function switchArea(nextSlug){
+async function switchArea(nextSlug){
+  const selection = ++areaSelection;
+  if(ROOT_DATA.areas){
+    await ensureLive(nextSlug);
+    if(selection !== areaSelection) return;
+  }
   areaSlug=nextSlug;
   DATA=AREAS[areaSlug];
   localStorage.setItem('citysim_live_area', areaSlug);
@@ -558,8 +590,6 @@ function countLeq(arr,t){let lo=0,hi=arr.length;while(lo<hi){const mid=(lo+hi)>>
 
 populateInterventions();
 populateScenarios();
-refreshScen();
-renderSummary();
 playBtn.onclick=()=>{playing=!playing;playBtn.textContent=playing?'Pause':'Play';};
 infoToggle.onclick=()=>{infoPanel.classList.toggle('open'); infoToggle.textContent=infoPanel.classList.contains('open')?'Hide':'\\u24d8 What is this?';};
 scrub.oninput=e=>{currentTime=+e.target.value;};
@@ -575,7 +605,7 @@ function frame(now){
   const s=DATA.scenarios[scen];
   if(playing){currentTime+=dt*speed; if(currentTime>s.tmax) currentTime=s.tmin;}
   const points=[];
-  for(const trip of s.trips){const point=atTime(trip,currentTime); if(point) points.push(point);}
+  for(const trip of s.trips || []){const point=atTime(trip,currentTime); if(point) points.push(point);}
   const completed=countLeq(s.arrivals,currentTime);
   const stuck=countLeq(s.stuck,currentTime);
   const departed=countLeq(s.departures,currentTime);
@@ -588,7 +618,14 @@ function frame(now){
   deckgl.setProps({layers:[basemap, ...nbhdFill(), roadsLayer(), affectedLayer(s), vehicleLayer(points), ...nbhdLabels()]});
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+function startLive(){
+  refreshScen();
+  renderSummary();
+  last=performance.now();
+  requestAnimationFrame(frame);
+}
+if(ROOT_DATA.areas) ensureLive(areaSlug).then(()=>startLive());
+else startLive();
 </script>
 </body>
 </html>

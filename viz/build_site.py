@@ -260,6 +260,20 @@ def main() -> None:
                 if boundary.contains(Point(*road["path"][len(road["path"]) // 2]))
             ]
 
+    live_metadata = {}
+    for area, payload in live_areas.items():
+        dashed_slug = _area_public_slug(area)
+        (PUBLIC / dashed_slug / "data" / "live_payload.json").write_text(
+            json.dumps(payload, separators=(",", ":")), encoding="utf-8"
+        )
+        metadata = payload.copy()
+        metadata.pop("roads", None)
+        metadata["scenarios"] = [scenario.copy() for scenario in payload["scenarios"]]
+        for scenario in metadata["scenarios"]:
+            scenario.pop("trips", None)
+        metadata["data_url"] = f"{dashed_slug}/data/live_payload.json"
+        live_metadata[area] = metadata
+
     needs_metadata = {}
     for area, payload in needs_areas.items():
         dashed_slug = _area_public_slug(area)
@@ -323,7 +337,7 @@ def main() -> None:
 
     default_live = default_area if default_area in live_order else (live_order[0] if live_order else default_area)
     unified_live = {
-        "areas": live_areas,
+        "areas": live_metadata,
         "area_order": live_order,
         "default_area": default_live,
         "boundaries": live_boundaries,

@@ -96,9 +96,12 @@ let curZoom = 11;
 function grayFor(i){const n=Math.max(1,BOUNDARIES.length-1);const v=Math.round(64+72*(i/n));return v;}
 function overlayOpacity(){return BOUNDARIES.length>1?Math.max(0,Math.min(1,(12.7-curZoom)/1.5)):0;}
 const {DeckGL, TileLayer, BitmapLayer, PathLayer} = deck;
+// Esri basemaps are keyless (like the satellite layer). CARTO's raster
+// basemaps now return an "API key required" placeholder tile. Note Esri uses
+// {z}/{y}/{x} order (y before x), unlike CARTO's {z}/{x}/{y}.
 const BASEMAPS = {
-  dark:'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  light:'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+  dark:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  light:'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
   satellite:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 };
 let currentBase='dark';
