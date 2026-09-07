@@ -243,9 +243,7 @@ HTML = """<!DOCTYPE html>
   #downloadCsv{display:inline-block;margin-top:9px;color:#8fd6ff;font-size:12.5px;text-decoration:none;font-weight:600;}
   #downloadCsv:hover{text-decoration:underline;}
   #areaWrap{position:absolute;top:14px;left:320px;z-index:6;color:#dff;}
-  #areaButtons{display:flex;gap:5px;}
-  #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;}
-  #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
+  #areaButtons{width:180px;max-width:100%;background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;}
   #nbhdHint{position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:8;display:none;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:999px;padding:9px 18px;font-size:13.5px;color:#e7f3ff;backdrop-filter:blur(5px);box-shadow:0 8px 26px rgba(0,0,0,.45);pointer-events:none;letter-spacing:.01em;animation:hintIn .5s ease both;}
   #nbhdHint b{color:#8fd6ff;font-weight:700;}
   @keyframes hintIn{from{opacity:0;transform:translate(-50%,-6px);}to{opacity:1;transform:translate(-50%,0);}}
@@ -282,7 +280,7 @@ HTML = """<!DOCTYPE html>
     <div class="legend-row"><span class="dot dot-stop"></span><span>Stopped or crawling</span></div>
   </div>
 </div></div>
-<div id="areaWrap"><div class="pill">Neighborhood&nbsp;<span id="areaButtons"></span></div></div>
+<div id="areaWrap"><div class="pill">Neighborhood&nbsp;<select id="areaButtons" aria-label="Neighborhood"></select></div></div>
 <div id="scenwrap"><div class="pill">
   Intervention&nbsp;<select id="intervention"></select>
   &nbsp;Scenario&nbsp;<select id="scenario"></select>
@@ -364,7 +362,7 @@ async function ensureLive(slug){
 let areaSelection = 0;
 const BOUNDARIES = ROOT_DATA.boundaries || [];
 const BOUNDS = ROOT_DATA.bounds || null;
-let curZoom = 11;
+let curZoom = 13.2;
 function grayFor(i){const n=Math.max(1,BOUNDARIES.length-1);const v=Math.round(64+72*(i/n));return v;}
 function overlayOpacity(){return BOUNDARIES.length>1?Math.max(0,Math.min(1,(12.7-curZoom)/1.5)):0;}
 const {DeckGL, TileLayer, BitmapLayer, PathLayer, ScatterplotLayer} = deck;
@@ -462,6 +460,8 @@ function boundaryFill(op){
 }
 function boundaryLabels(op){
   return new deck.TextLayer({id:'nbhd-labels',data:BOUNDARIES,pickable:true,opacity:op,
+    extensions:[new deck.CollisionFilterExtension()],collisionEnabled:true,
+    getCollisionPriority:d=>d.slug===areaSlug?1000:0,
     parameters:{depthTest:false},
     getPosition:d=>d.label,getText:d=>d.name,
     getSize:d=>d.slug===areaSlug?18:13,sizeUnits:'pixels',
@@ -469,28 +469,19 @@ function boundaryLabels(op){
     fontFamily:'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',fontWeight:700,
     fontSettings:{sdf:true},outlineWidth:2.6,outlineColor:[4,10,18,240],
     getTextAnchor:'middle',getAlignmentBaseline:'center',billboard:true,characterSet:'auto',
-    updateTriggers:{getColor:areaSlug,getSize:areaSlug},
+    updateTriggers:{getColor:areaSlug,getSize:areaSlug,getCollisionPriority:areaSlug},
     onClick:info=>{if(info.object)switchArea(info.object.slug);}});
 }
 function nbhdFill(){const op=overlayOpacity();return op<0.04?[]:[boundaryFill(op)];}
 function nbhdLabels(){const op=overlayOpacity();return op<0.04?[]:[boundaryLabels(op)];}
-const NBHD_ON = BOUNDARIES.length>1;
 const deckgl = new DeckGL({
   container:'map',
-  initialViewState:{longitude:DATA.center[0], latitude:DATA.center[1], zoom:13, pitch:50, bearing:-15},
+  initialViewState:{longitude:DATA.center[0], latitude:DATA.center[1], zoom:13.2, pitch:50, bearing:-15},
   controller:true,
   getCursor:({isHovering})=>isHovering?'pointer':'grab',
   onViewStateChange:({viewState})=>{curZoom=viewState.zoom;},
   layers:[basemap, ...nbhdFill(), roadsLayer(), affectedLayer(DATA.scenarios[0]), vehicleLayer([]), ...nbhdLabels()]
 });
-if(NBHD_ON && BOUNDS){
-  try{
-    const vp=new deck.WebMercatorViewport({width:window.innerWidth,height:window.innerHeight});
-    const fitted=vp.fitBounds(BOUNDS,{padding:{top:70,bottom:118,left:330,right:340}});
-    curZoom=Math.min(fitted.zoom,12.5);
-    deckgl.setProps({initialViewState:{longitude:fitted.longitude,latitude:fitted.latitude,zoom:curZoom,pitch:0,bearing:0}});
-  }catch(e){}
-}
 
 const clock=document.getElementById('clock'), scrub=document.getElementById('scrub');
 const playBtn=document.getElementById('play'), speedEl=document.getElementById('speed');
@@ -504,12 +495,9 @@ const sumVht=document.getElementById('sumVht'), sumVmt=document.getElementById('
 const sumStuck=document.getElementById('sumStuck'), sumLinks=document.getElementById('sumLinks');
 const sumWarn=document.getElementById('summaryWarn');
 
-AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>switchArea(slug);areaButtons.appendChild(b);});
-if(NBHD_ON){
-  const aw=document.getElementById('areaWrap'); if(aw) aw.style.display='none';
-  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='block';
-  const an=document.getElementById('areaName'); if(an) an.style.display='none';
-}
+AREA_ORDER.forEach(slug=>{const option=document.createElement('option');option.value=slug;option.textContent=AREAS[slug].area_name||slug;areaButtons.appendChild(option);});
+areaButtons.value=areaSlug;
+areaButtons.onchange=()=>switchArea(areaButtons.value);
 
 function fmtNumber(value,digits=0){return value===null||value===undefined||Number.isNaN(Number(value))?'--':Number(value).toLocaleString(undefined,{maximumFractionDigits:digits,minimumFractionDigits:digits});}
 function renderSummary(){
@@ -583,7 +571,7 @@ async function switchArea(nextSlug){
   refreshScen();
   const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='none';
   const an=document.getElementById('areaName'); if(an) an.style.display='';
-  document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
+  document.getElementById('areaButtons').value=areaSlug;
 }
 function fmt(s){s=Math.floor(s)%86400;return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0');}
 function countLeq(arr,t){let lo=0,hi=arr.length;while(lo<hi){const mid=(lo+hi)>>1;if(arr[mid]<=t)lo=mid+1;else hi=mid;}return lo;}
@@ -597,7 +585,6 @@ speedEl.oninput=e=>{speed=+e.target.value;};
 document.querySelectorAll('.preset').forEach(btn=>btn.onclick=()=>{speed=+btn.dataset.speed;speedEl.value=speed;});
 sel.onchange=e=>{scen=+e.target.value;refreshScen();currentTime=DATA.scenarios[scen].tmin;};
 interventionSel.onchange=()=>{populateScenarios();refreshScen();currentTime=DATA.scenarios[scen].tmin;};
-document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
 
 let last=performance.now();
 function frame(now){

@@ -211,9 +211,7 @@ HTML = """<!DOCTYPE html>
   #srcPanel a:hover{text-decoration:underline;}
   #srcPanel .note{color:#a9bed2;font-size:11px;margin-top:8px;}
   #areaWrap{position:absolute;top:14px;right:96px;z-index:8;color:#dff;background:rgba(10,20,32,.82);border:1px solid rgba(90,160,255,.25);border-radius:8px;padding:7px 10px;font-size:12.5px;display:flex;gap:7px;align-items:center;}
-  #areaButtons{display:flex;gap:5px;}
-  #areaButtons button{background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;}
-  #areaButtons button.active{background:#1f7fbf;border-color:#74d7ff;color:#fff;}
+  #areaButtons{width:180px;max-width:100%;background:#16324a;color:#dff;border:1px solid #3c6f8c;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer;}
   #nbhdHint{position:absolute;left:50%;top:20px;transform:translateX(-50%);z-index:8;display:none;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:999px;padding:9px 18px;font-size:13.5px;color:#e7f3ff;backdrop-filter:blur(5px);box-shadow:0 8px 26px rgba(0,0,0,.45);pointer-events:none;letter-spacing:.01em;animation:hintIn .5s ease both;}
   #nbhdHint b{color:#8fd6ff;font-weight:700;}
   @keyframes hintIn{from{opacity:0;transform:translate(-50%,-6px);}to{opacity:1;transform:translate(-50%,0);}}
@@ -229,7 +227,7 @@ HTML = """<!DOCTYPE html>
   <p style="color:#9fb7cc;font-size:11px;">A planning signal, not ground truth.</p>
   <div id="ramp"></div><div id="legendrow"><span>lower need</span><span>higher need</span></div>
 </div>
-<div id="areaWrap">Neighborhood <span id="areaButtons"></span></div>
+<div id="areaWrap">Neighborhood <select id="areaButtons" aria-label="Neighborhood"></select></div>
 <button id="srcBtn">Sources</button>
 <div id="srcPanel"></div>
 <div id="views">
@@ -268,7 +266,7 @@ async function ensureFeatures(slug){
 let areaSelection = 0;
 const BOUNDARIES = ROOT_DATA.boundaries || [];
 const BOUNDS = ROOT_DATA.bounds || null;
-let curZoom = 11;
+let curZoom = 13.2;
 function grayFor(i){const n=Math.max(1,BOUNDARIES.length-1);const v=Math.round(64+72*(i/n));return v;}
 function overlayOpacity(){return BOUNDARIES.length>1?Math.max(0,Math.min(1,(12.7-curZoom)/1.5)):0;}
 const {DeckGL, TileLayer, BitmapLayer, PathLayer} = deck;
@@ -310,6 +308,8 @@ function boundaryFill(op){
 }
 function boundaryLabels(op){
   return new deck.TextLayer({id:'nbhd-labels',data:BOUNDARIES,pickable:true,opacity:op,
+    extensions:[new deck.CollisionFilterExtension()],collisionEnabled:true,
+    getCollisionPriority:d=>d.slug===areaSlug?1000:0,
     parameters:{depthTest:false},
     getPosition:d=>d.label,getText:d=>d.name,
     getSize:d=>d.slug===areaSlug?18:13,sizeUnits:'pixels',
@@ -317,7 +317,7 @@ function boundaryLabels(op){
     fontFamily:'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',fontWeight:700,
     fontSettings:{sdf:true},outlineWidth:2.6,outlineColor:[4,10,18,240],
     getTextAnchor:'middle',getAlignmentBaseline:'center',billboard:true,characterSet:'auto',
-    updateTriggers:{getColor:areaSlug,getSize:areaSlug},
+    updateTriggers:{getColor:areaSlug,getSize:areaSlug,getCollisionPriority:areaSlug},
     onClick:info=>{if(info.object)selectArea(info.object.slug);}});
 }
 function nbhdFill(){const op=overlayOpacity();return op<0.04?[]:[boundaryFill(op)];}
@@ -330,14 +330,6 @@ const deckgl=new DeckGL({container:'map',
   getTooltip:({object})=>object && object.path && {html:'<b>'+object.name+'</b> &middot; need '+object.score.toFixed(0),
     style:{background:'rgba(6,14,22,.95)',color:'#e7f1ff',fontSize:'12px',padding:'6px 9px',borderRadius:'6px',border:'1px solid rgba(116,215,255,.5)'}},
   getCursor:({isHovering})=>isHovering?'pointer':'grab'});
-if(BOUNDARIES.length>1 && BOUNDS){
-  try{
-    const vp=new deck.WebMercatorViewport({width:window.innerWidth,height:window.innerHeight});
-    const fitted=vp.fitBounds(BOUNDS,{padding:{top:70,bottom:96,left:80,right:76}});
-    curZoom=Math.min(fitted.zoom,12.5);
-    deckgl.setProps({initialViewState:{longitude:fitted.longitude,latitude:fitted.latitude,zoom:curZoom,pitch:0,bearing:0}});
-  }catch(e){}
-}
 function render(){deckgl.setProps({layers:mapLayers()});}
 async function selectArea(nextSlug){
   const selection = ++areaSelection;
@@ -357,7 +349,7 @@ async function selectArea(nextSlug){
   const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='none';
   const bn=document.getElementById('banner'); if(bn) bn.style.display='';
   const an=document.getElementById('areaName'); if(an) an.style.display='';
-  document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
+  document.getElementById('areaButtons').value=areaSlug;
 }
 function bar(v){return '<div class="bar"><span style="width:'+Math.round(v*100)+'%"></span></div>';}
 function clickStreet(d){
@@ -381,14 +373,9 @@ document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{
   render();
 });
 const areaButtons=document.getElementById('areaButtons');
-AREA_ORDER.forEach(slug=>{const b=document.createElement('button');b.type='button';b.dataset.area=slug;b.textContent=AREAS[slug].area_name||slug;b.onclick=()=>selectArea(slug);areaButtons.appendChild(b);});
-document.querySelectorAll('#areaButtons button').forEach(b=>b.classList.toggle('active', b.dataset.area===areaSlug));
-if(BOUNDARIES.length>1){
-  const aw=document.getElementById('areaWrap'); if(aw) aw.style.display='none';
-  const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='block';
-  const bn=document.getElementById('banner'); if(bn) bn.style.display='none';
-  const an=document.getElementById('areaName'); if(an) an.style.display='none';
-}
+AREA_ORDER.forEach(slug=>{const option=document.createElement('option');option.value=slug;option.textContent=AREAS[slug].area_name||slug;areaButtons.appendChild(option);});
+areaButtons.value=areaSlug;
+areaButtons.onchange=()=>selectArea(areaButtons.value);
 const btn=document.getElementById('srcBtn'), panel=document.getElementById('srcPanel');
 function renderSources(){
 let html='<h3>Data sources</h3>';
