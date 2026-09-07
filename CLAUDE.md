@@ -48,9 +48,30 @@ The needs index (`s7`) is built for **all 77 Chicago community areas**. Areas ar
 - `scripts/gen_area_configs.py` — one-time generator that fetches all 77 areas and emits the `areas:` config block (with a self-check that the 10 originally-configured slug/id pairs match before writing). Writes `data/interim/areas_generated.yaml` for review; does not edit `params.yaml`.
 - `scripts/build_area_needs.py` — cheap, no-simulation batch driver. Runs `s0 -> s1 -> s7` per area (the needs path needs no `core`/crosswalk, demand, or MATSim), with per-step retry and skip-existing. `--areas a,b,c` for a batch, or omit `--areas` to run every configured area. Use this to (re)build the needs map at scale.
 
-Gotchas learned building this:
+Gotchas learned building this (all resolved unless noted):
 - `s7`'s Socrata read timeout is `(30, 240)` seconds in `_fetch_and_cache`. Dense areas (Near West Side ~9k crashes, the Loop) exceed a 60s read timeout and fail all retries identically; 240s fixes it.
-- The unified site maps **lazy-load** per-area data. `viz/build_site.py` writes each area's segment payload to `public/<slug>/data/needs_payload.json` and the root `public/needs_map.html` fetches it on neighborhood selection instead of inlining all 77 areas. Inlining produced a 228 MB HTML (over GitHub's 100 MB limit and a 228 MB page load); lazy-loading keeps the root at ~1 MB. NOTE: `public/live_traffic.html` still inlines its (10) sim areas (~55 MB) and needs the same treatment before many more areas get MATSim sims.
+- The unified site maps **lazy-load** per-area data. `viz/build_site.py` writes each area's payload to `public/<slug>/data/needs_payload.json` (needs) and `.../live_payload.json` (live), and the root `public/needs_map.html` / `public/live_traffic.html` fetch it on neighborhood selection instead of inlining all areas. Inlining all 77 produced a 228 MB HTML (over GitHub's 100 MB limit); lazy-loading keeps the root at ~1-2 MB. Both needs and live maps now lazy-load.
+- **Because the maps `fetch()` per-area data, they MUST be served over HTTP** — open the deployed URL or run `python viz/serve_site.py`. Opening the `.html` directly as a `file://` URL makes `fetch()` fail silently and no streets render.
+- **`.vercelignore` must anchor `/data/` (leading slash), not bare `data/`.** Bare `data/` (gitignore semantics) also matched `public/<area>/data/`, so the lazy-loaded payloads 404'd on Vercel and the deployed map showed no streets. Verify deploys by curling e.g. `https://<site>/west-town/data/needs_payload.json` → expect 200.
+- The on-map neighborhood selector is driven by `viz/community_area_boundaries.geojson`; it must contain all 77 areas or new areas are unreachable. Regenerate with `scripts/gen_boundaries_geojson.py` (fetches `igwz-8jzy`).
+- Basemaps are keyless **Esri** tiles (`{z}/{y}/{x}` order). CARTO raster basemaps now return an "API key required" placeholder tile; do not use them.
+- Maps land on the default neighborhood (zoom 13.2) and use `deck.CollisionFilterExtension` on the label layer so 77 labels don't blob at overview zoom; a `<select>` dropdown switches areas.
+
+### Needs Index: how it works vs. accuracy audit (2026-09-07)
+
+INTENDED (`pipeline/s7_needs_index.py`): for each network link, snap three public-data layers within 40 m and percentile-normalize each per area, then combine into a 0-100 `need_score` weighted **safety 0.45 / pavement 0.25 / congestion 0.30**:
+- **safety** = crashes (`85ca-t3if`), severity-weighted (fatal 5 / incapacitating 4 / nonincapacitating 2 / other 1), last 5 years
+- **pavement** = open+recent 311 potholes (`7as2-ds3y`)
+- **congestion** = avg daily traffic (`gc7y-n4xa`), mean vehiclecount per segment (dataset is recent/daily, ~2.3M rows citywide, NOT stale 2006 data)
+
+VERIFIED ACCURATE: display fidelity is exact — served `public/<slug>/data/needs_payload.json` scores and raw crash/pothole/ADT values match the computed `data/processed/<slug>/needs_index.csv` with 0 mismatches. All 77 areas built; weights identical everywhere; ADT correctly mean-aggregated; percentile normalization collapses the many zero-value links to 0 correctly.
+
+KNOWN ACCURACY ISSUES (not yet fixed — decide before trusting the numbers):
+1. **BUG: crash severity misclassification.** In `s7_needs_index.py` the `elif 'INCAPACITATING' in sev` branch matches `"NONINCAPACITATING INJURY"` (substring), so ~**8.9%** of crashes (nonincapacitating) are weighted 4.0 instead of 2.0, skewing the safety layer in all 77 areas. FIX = exact/ordered matching (check `NONINCAPACITATING`/`REPORTED` before `INCAPACITATING`), then **re-run `s7` for all 77** (`scripts/build_area_needs.py`) and rebuild the site (`viz/build_site.py`).
+2. **Coverage far thinner than the 3-factor framing implies.** Across 77 areas pavement has data on ~1% of links (median 0.010) and congestion ~0.5% (median 0.0053). So for ~99% of streets pavement+congestion contribute 0 and the score is effectively `safety x 0.45` (capped ~45); e.g. West Town has ~62% of streets scoring exactly 0. Disclosed in the map's Sources note as "safety-weighted," but the 25%/30% weights overstate what the data supports. DECISION NEEDED: reweight to real coverage, restrict pavement/congestion to areas with data, or relabel the map as crash-driven.
+3. **Minor: popup "rank #X of N" denominator** uses the full buffered network (e.g. 23,000 for West Town) while only the ~6,449 in-boundary streets are shown on the unified map (features are boundary-clipped in `build_site.py`, but rank/total come from the pre-clip per-area payload).
+
+NOTE: BCA / traffic-simulation numbers (live map, pothole/bike-lane) are a SEPARATE, larger data path and were NOT covered by this audit — see "Current Intervention Details" and "Known Limitations".
 
 ## Toolchain
 
@@ -203,6 +224,11 @@ REMAINING / NEW NEXT STEPS:
 7. Investigate the bike-lane car-network disbenefit — re-examine `s5` capacity/freespeed reduction and rerouting; only then is the bike-lane BCA meaningful.
 8. Transit follow-ups: confirm CMAP transit mode codes `[4,5,6]` against c24q4 TBM source; calibrate ridership/transfer behavior (transfer penalties / SwissRailRaptor); model a transit BCA; optionally enable Metra/Pace, add deck.gl transit overlay, add typed `TransitConfig`.
 9. Replace remaining sketch coefficients (bike-lane demand/health shares, pothole repair cost) with policy-grade Chicago evidence (FOIA/bid tabs, local counts, crash history).
+10. **Needs-index accuracy fixes (from the 2026-09-07 audit — see "Needs Index: how it works vs. accuracy audit" above).** Pending user decision on each:
+    - a) Fix the crash-severity substring bug in `s7_needs_index.py` (nonincapacitating mis-weighted 4.0 -> should be 2.0), then re-run `s7` for all 77 (`scripts/build_area_needs.py`) + rebuild site.
+    - b) Decide honest score framing given pavement ~1% / congestion ~0.5% coverage (reweight, restrict layers to covered areas, or relabel as crash-driven).
+    - c) Optional: fix the popup "rank of N" denominator to count only in-boundary streets shown.
+    - NOTE: an accuracy audit of the BCA / traffic-simulation numbers has NOT been done and is a separate task.
 
 ## Model-Health Tuning Result
 
