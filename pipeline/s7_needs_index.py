@@ -96,7 +96,10 @@ def _fetch_and_cache(url: str, params: dict, cache_path, page_size: int = 50000)
         page_params = dict(params)
         page_params['$limit'] = page_size
         page_params['$offset'] = offset
-        r = requests.get(url, params=page_params, timeout=60)
+        # Dense areas (e.g. Near West Side) return large crash/ADT pages the
+        # server needs well over 60s to produce; use a generous read timeout so
+        # these do not fail all retries identically. (connect, read) seconds.
+        r = requests.get(url, params=page_params, timeout=(30, 240))
         r.raise_for_status()
         page = r.json()
         rows.extend(page)

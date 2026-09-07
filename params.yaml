@@ -94,6 +94,408 @@ areas:
       community_area_id: 4
       name: "Lincoln Square"
       buffer_m: 1500
+  rogers_park:
+    scenario_slug: "rogers_park"
+    boundary:
+      community_area_id: 1
+      name: "Rogers Park"
+      buffer_m: 1500
+  west_ridge:
+    scenario_slug: "west_ridge"
+    boundary:
+      community_area_id: 2
+      name: "West Ridge"
+      buffer_m: 1500
+  uptown:
+    scenario_slug: "uptown"
+    boundary:
+      community_area_id: 3
+      name: "Uptown"
+      buffer_m: 1500
+  north_center:
+    scenario_slug: "north_center"
+    boundary:
+      community_area_id: 5
+      name: "North Center"
+      buffer_m: 1500
+  edison_park:
+    scenario_slug: "edison_park"
+    boundary:
+      community_area_id: 9
+      name: "Edison Park"
+      buffer_m: 1500
+  norwood_park:
+    scenario_slug: "norwood_park"
+    boundary:
+      community_area_id: 10
+      name: "Norwood Park"
+      buffer_m: 1500
+  jefferson_park:
+    scenario_slug: "jefferson_park"
+    boundary:
+      community_area_id: 11
+      name: "Jefferson Park"
+      buffer_m: 1500
+  forest_glen:
+    scenario_slug: "forest_glen"
+    boundary:
+      community_area_id: 12
+      name: "Forest Glen"
+      buffer_m: 1500
+  north_park:
+    scenario_slug: "north_park"
+    boundary:
+      community_area_id: 13
+      name: "North Park"
+      buffer_m: 1500
+  albany_park:
+    scenario_slug: "albany_park"
+    boundary:
+      community_area_id: 14
+      name: "Albany Park"
+      buffer_m: 1500
+  portage_park:
+    scenario_slug: "portage_park"
+    boundary:
+      community_area_id: 15
+      name: "Portage Park"
+      buffer_m: 1500
+  dunning:
+    scenario_slug: "dunning"
+    boundary:
+      community_area_id: 17
+      name: "Dunning"
+      buffer_m: 1500
+  montclare:
+    scenario_slug: "montclare"
+    boundary:
+      community_area_id: 18
+      name: "Montclare"
+      buffer_m: 1500
+  hermosa:
+    scenario_slug: "hermosa"
+    boundary:
+      community_area_id: 20
+      name: "Hermosa"
+      buffer_m: 1500
+  austin:
+    scenario_slug: "austin"
+    boundary:
+      community_area_id: 25
+      name: "Austin"
+      buffer_m: 1500
+  west_garfield_park:
+    scenario_slug: "west_garfield_park"
+    boundary:
+      community_area_id: 26
+      name: "West Garfield Park"
+      buffer_m: 1500
+  east_garfield_park:
+    scenario_slug: "east_garfield_park"
+    boundary:
+      community_area_id: 27
+      name: "East Garfield Park"
+      buffer_m: 1500
+  near_west_side:
+    scenario_slug: "near_west_side"
+    boundary:
+      community_area_id: 28
+      name: "Near West Side"
+      buffer_m: 1500
+  north_lawndale:
+    scenario_slug: "north_lawndale"
+    boundary:
+      community_area_id: 29
+      name: "North Lawndale"
+      buffer_m: 1500
+  south_lawndale:
+    scenario_slug: "south_lawndale"
+    boundary:
+      community_area_id: 30
+      name: "South Lawndale"
+      buffer_m: 1500
+  lower_west_side:
+    scenario_slug: "lower_west_side"
+    boundary:
+      community_area_id: 31
+      name: "Lower West Side"
+      buffer_m: 1500
+  loop:
+    scenario_slug: "loop"
+    boundary:
+      community_area_id: 32
+      name: "Loop"
+      buffer_m: 1500
+  near_south_side:
+    scenario_slug: "near_south_side"
+    boundary:
+      community_area_id: 33
+      name: "Near South Side"
+      buffer_m: 1500
+  armour_square:
+    scenario_slug: "armour_square"
+    boundary:
+      community_area_id: 34
+      name: "Armour Square"
+      buffer_m: 1500
+  douglas:
+    scenario_slug: "douglas"
+    boundary:
+      community_area_id: 35
+      name: "Douglas"
+      buffer_m: 1500
+  oakland:
+    scenario_slug: "oakland"
+    boundary:
+      community_area_id: 36
+      name: "Oakland"
+      buffer_m: 1500
+  fuller_park:
+    scenario_slug: "fuller_park"
+    boundary:
+      community_area_id: 37
+      name: "Fuller Park"
+      buffer_m: 1500
+  grand_boulevard:
+    scenario_slug: "grand_boulevard"
+    boundary:
+      community_area_id: 38
+      name: "Grand Boulevard"
+      buffer_m: 1500
+  kenwood:
+    scenario_slug: "kenwood"
+    boundary:
+      community_area_id: 39
+      name: "Kenwood"
+      buffer_m: 1500
+  washington_park:
+    scenario_slug: "washington_park"
+    boundary:
+      community_area_id: 40
+      name: "Washington Park"
+      buffer_m: 1500
+  hyde_park:
+    scenario_slug: "hyde_park"
+    boundary:
+      community_area_id: 41
+      name: "Hyde Park"
+      buffer_m: 1500
+  woodlawn:
+    scenario_slug: "woodlawn"
+    boundary:
+      community_area_id: 42
+      name: "Woodlawn"
+      buffer_m: 1500
+  south_shore:
+    scenario_slug: "south_shore"
+    boundary:
+      community_area_id: 43
+      name: "South Shore"
+      buffer_m: 1500
+  chatham:
+    scenario_slug: "chatham"
+    boundary:
+      community_area_id: 44
+      name: "Chatham"
+      buffer_m: 1500
+  avalon_park:
+    scenario_slug: "avalon_park"
+    boundary:
+      community_area_id: 45
+      name: "Avalon Park"
+      buffer_m: 1500
+  south_chicago:
+    scenario_slug: "south_chicago"
+    boundary:
+      community_area_id: 46
+      name: "South Chicago"
+      buffer_m: 1500
+  burnside:
+    scenario_slug: "burnside"
+    boundary:
+      community_area_id: 47
+      name: "Burnside"
+      buffer_m: 1500
+  calumet_heights:
+    scenario_slug: "calumet_heights"
+    boundary:
+      community_area_id: 48
+      name: "Calumet Heights"
+      buffer_m: 1500
+  roseland:
+    scenario_slug: "roseland"
+    boundary:
+      community_area_id: 49
+      name: "Roseland"
+      buffer_m: 1500
+  pullman:
+    scenario_slug: "pullman"
+    boundary:
+      community_area_id: 50
+      name: "Pullman"
+      buffer_m: 1500
+  south_deering:
+    scenario_slug: "south_deering"
+    boundary:
+      community_area_id: 51
+      name: "South Deering"
+      buffer_m: 1500
+  east_side:
+    scenario_slug: "east_side"
+    boundary:
+      community_area_id: 52
+      name: "East Side"
+      buffer_m: 1500
+  west_pullman:
+    scenario_slug: "west_pullman"
+    boundary:
+      community_area_id: 53
+      name: "West Pullman"
+      buffer_m: 1500
+  riverdale:
+    scenario_slug: "riverdale"
+    boundary:
+      community_area_id: 54
+      name: "Riverdale"
+      buffer_m: 1500
+  hegewisch:
+    scenario_slug: "hegewisch"
+    boundary:
+      community_area_id: 55
+      name: "Hegewisch"
+      buffer_m: 1500
+  garfield_ridge:
+    scenario_slug: "garfield_ridge"
+    boundary:
+      community_area_id: 56
+      name: "Garfield Ridge"
+      buffer_m: 1500
+  archer_heights:
+    scenario_slug: "archer_heights"
+    boundary:
+      community_area_id: 57
+      name: "Archer Heights"
+      buffer_m: 1500
+  brighton_park:
+    scenario_slug: "brighton_park"
+    boundary:
+      community_area_id: 58
+      name: "Brighton Park"
+      buffer_m: 1500
+  mckinley_park:
+    scenario_slug: "mckinley_park"
+    boundary:
+      community_area_id: 59
+      name: "Mckinley Park"
+      buffer_m: 1500
+  bridgeport:
+    scenario_slug: "bridgeport"
+    boundary:
+      community_area_id: 60
+      name: "Bridgeport"
+      buffer_m: 1500
+  new_city:
+    scenario_slug: "new_city"
+    boundary:
+      community_area_id: 61
+      name: "New City"
+      buffer_m: 1500
+  west_elsdon:
+    scenario_slug: "west_elsdon"
+    boundary:
+      community_area_id: 62
+      name: "West Elsdon"
+      buffer_m: 1500
+  gage_park:
+    scenario_slug: "gage_park"
+    boundary:
+      community_area_id: 63
+      name: "Gage Park"
+      buffer_m: 1500
+  clearing:
+    scenario_slug: "clearing"
+    boundary:
+      community_area_id: 64
+      name: "Clearing"
+      buffer_m: 1500
+  west_lawn:
+    scenario_slug: "west_lawn"
+    boundary:
+      community_area_id: 65
+      name: "West Lawn"
+      buffer_m: 1500
+  chicago_lawn:
+    scenario_slug: "chicago_lawn"
+    boundary:
+      community_area_id: 66
+      name: "Chicago Lawn"
+      buffer_m: 1500
+  west_englewood:
+    scenario_slug: "west_englewood"
+    boundary:
+      community_area_id: 67
+      name: "West Englewood"
+      buffer_m: 1500
+  englewood:
+    scenario_slug: "englewood"
+    boundary:
+      community_area_id: 68
+      name: "Englewood"
+      buffer_m: 1500
+  greater_grand_crossing:
+    scenario_slug: "greater_grand_crossing"
+    boundary:
+      community_area_id: 69
+      name: "Greater Grand Crossing"
+      buffer_m: 1500
+  ashburn:
+    scenario_slug: "ashburn"
+    boundary:
+      community_area_id: 70
+      name: "Ashburn"
+      buffer_m: 1500
+  auburn_gresham:
+    scenario_slug: "auburn_gresham"
+    boundary:
+      community_area_id: 71
+      name: "Auburn Gresham"
+      buffer_m: 1500
+  beverly:
+    scenario_slug: "beverly"
+    boundary:
+      community_area_id: 72
+      name: "Beverly"
+      buffer_m: 1500
+  washington_heights:
+    scenario_slug: "washington_heights"
+    boundary:
+      community_area_id: 73
+      name: "Washington Heights"
+      buffer_m: 1500
+  mount_greenwood:
+    scenario_slug: "mount_greenwood"
+    boundary:
+      community_area_id: 74
+      name: "Mount Greenwood"
+      buffer_m: 1500
+  morgan_park:
+    scenario_slug: "morgan_park"
+    boundary:
+      community_area_id: 75
+      name: "Morgan Park"
+      buffer_m: 1500
+  ohare:
+    scenario_slug: "ohare"
+    boundary:
+      community_area_id: 76
+      name: "Ohare"
+      buffer_m: 1500
+  edgewater:
+    scenario_slug: "edgewater"
+    boundary:
+      community_area_id: 77
+      name: "Edgewater"
+      buffer_m: 1500
 
 crs: "EPSG:26971"
 

@@ -1,0 +1,258 @@
+{
+  "weights": {
+    "safety": 0.45,
+    "pavement": 0.25,
+    "congestion": 0.3
+  },
+  "normalization": "percentile",
+  "snap_distance_m": 40.0,
+  "layer_coverage": {
+    "safety": 0.30340059490312726,
+    "pavement": 0.024037302033925557,
+    "congestion": 0.004260792668220918
+  },
+  "top_segments": [
+    {
+      "link_id": "433280227_r-1364623781_f-1364623781_f_2-1364623781_f_3-1364623781_f_4",
+      "need_score": 99.19118829393794,
+      "components": {
+        "safety": 0.9964624537707026,
+        "pavement": 0.9760411641743045,
+        "congestion": 0.9983116256632899
+      }
+    },
+    {
+      "link_id": "433280018_f-433280018_f_2-433280014_f-433280014_f_2-433280014_f_3",
+      "need_score": 98.63161279948545,
+      "components": {
+        "safety": 0.9850458273034249,
+        "pavement": 0.9760411641743045,
+        "congestion": 0.996784048882457
+      }
+    },
+    {
+      "link_id": "24070796_r_2-24070796_r-477446998_f-477446998_f_2",
+      "need_score": 97.88390416465671,
+      "components": {
+        "safety": 0.9684836790480784,
+        "pavement": 0.9760411641743045,
+        "congestion": 0.9967036501045184
+      }
+    },
+    {
+      "link_id": "43152374_r_4",
+      "need_score": 91.81419842418394,
+      "components": {
+        "safety": 0.8341373211127191,
+        "pavement": 0.9760411641743045,
+        "congestion": 0.9958996623251326
+      }
+    },
+    {
+      "link_id": "196409224_f_4-196409224_f_5",
+      "need_score": 74.65750120598167,
+      "components": {
+        "safety": 0.9927641099855282,
+        "pavement": 0.0,
+        "congestion": 0.99943720855443
+      }
+    },
+    {
+      "link_id": "428602820_f-428602820_f_2-428602814_f-428602814_f_2",
+      "need_score": 74.62373371924747,
+      "components": {
+        "safety": 0.9930857050972826,
+        "pavement": 0.0,
+        "congestion": 0.9978292329956585
+      }
+    },
+    {
+      "link_id": "208530826_r_13-208530826_r_12-208530826_r_11-208530826_r_10-208530826_r_9",
+      "need_score": 74.54052098408104,
+      "components": {
+        "safety": 0.9897893552018009,
+        "pavement": 0.0,
+        "congestion": 1.0
+      }
+    },
+    {
+      "link_id": "427773767_f-427773767_f_2",
+      "need_score": 74.46333815726001,
+      "components": {
+        "safety": 0.9897893552018009,
+        "pavement": 0.0,
+        "congestion": 0.9974272391059655
+      }
+    },
+    {
+      "link_id": "433277869_r_7-433277869_r_6-433277869_r_5-433277869_r_4-433277869_r_3-433277869_r_2-433277869_r",
+      "need_score": 74.29932465026532,
+      "components": {
+        "safety": 0.9846438334137321,
+        "pavement": 0.0,
+        "congestion": 0.9996784048882457
+      }
+    },
+    {
+      "link_id": "511381866_f_9-511381866_f_10-1409575585_f-1409575585_f_2",
+      "need_score": 74.22214182344429,
+      "components": {
+        "safety": 0.9840006431902235,
+        "pavement": 0.0,
+        "congestion": 0.9980704293294742
+      }
+    },
+    {
+      "link_id": "1323731262_f-1323731262_f_2-1323731262_f_3-1323731262_f_4",
+      "need_score": 74.19922817173179,
+      "components": {
+        "safety": 0.9832770541887763,
+        "pavement": 0.0,
+        "congestion": 0.9983920244412285
+      }
+    },
+    {
+      "link_id": "57717963_f_5-57717963_f_6-57717963_f_7",
+      "need_score": 74.07983598649301,
+      "components": {
+        "safety": 0.9815886798520662,
+        "pavement": 0.0,
+        "congestion": 0.9969448464383341
+      }
+    },
+    {
+      "link_id": "435331273_f-435331273_f_2-435331273_f_3-435331273_f_4-435331273_f_5",
+      "need_score": 74.07018813314036,
+      "components": {
+        "safety": 0.9815886798520662,
+        "pavement": 0.0,
+        "congestion": 0.9966232513265798
+      }
+    },
+    {
+      "link_id": "313337258_f-313337258_f_2-313337258_f_3-313337258_f_4-313337258_f_5-313337258_f_6-313337258_f_7",
+      "need_score": 73.60347322720695,
+      "components": {
+        "safety": 0.9710564399421129,
+        "pavement": 0.0,
+        "congestion": 0.9968644476603956
+      }
+    },
+    {
+      "link_id": "740945003_f-740945003_f_2",
+      "need_score": 73.56005788712012,
+      "components": {
+        "safety": 0.9684836790480784,
+        "pavement": 0.0,
+        "congestion": 0.9992764109985528
+      }
+    },
+    {
+      "link_id": "435331275_f-435331275_f_2",
+      "need_score": 73.49493487698987,
+      "components": {
+        "safety": 0.9684836790480784,
+        "pavement": 0.0,
+        "congestion": 0.9971056439942113
+      }
+    },
+    {
+      "link_id": "659980872_f-659980872_f_2-659980872_f_3",
+      "need_score": 73.36830680173662,
+      "components": {
+        "safety": 0.9663129120437369,
+        "pavement": 0.0,
+        "congestion": 0.9961408586589484
+      }
+    },
+    {
+      "link_id": "435331259_f_2-435331259_f_3-138140590_r_9-138140590_r_8-138140590_r_7",
+      "need_score": 73.2899179932465,
+      "components": {
+        "safety": 0.9634989548158868,
+        "pavement": 0.0,
+        "congestion": 0.9977488342177199
+      }
+    },
+    {
+      "link_id": "116970941_f",
+      "need_score": 73.23082489146164,
+      "components": {
+        "safety": 0.9610065926997909,
+        "pavement": 0.0,
+        "congestion": 0.9995176073323685
+      }
+    },
+    {
+      "link_id": "1061208222_f_13-1061208222_f_14",
+      "need_score": 73.1994693680656,
+      "components": {
+        "safety": 0.9610065926997909,
+        "pavement": 0.0,
+        "congestion": 0.9984724232191671
+      }
+    },
+    {
+      "link_id": "435331277_f-435331277_f_2",
+      "need_score": 72.8437047756874,
+      "components": {
+        "safety": 0.9536903039073806,
+        "pavement": 0.0,
+        "congestion": 0.9975880366618427
+      }
+    },
+    {
+      "link_id": "661277036_r_3-661277036_r_2",
+      "need_score": 72.81234925229137,
+      "components": {
+        "safety": 0.9536903039073806,
+        "pavement": 0.0,
+        "congestion": 0.9965428525486413
+      }
+    },
+    {
+      "link_id": "428599503_f_3",
+      "need_score": 72.44211287988422,
+      "components": {
+        "safety": 0.943962051776813,
+        "pavement": 0.0,
+        "congestion": 0.9987940183309214
+      }
+    },
+    {
+      "link_id": "608289683_r_8-608289683_r_7",
+      "need_score": 72.39387361312109,
+      "components": {
+        "safety": 0.943962051776813,
+        "pavement": 0.0,
+        "congestion": 0.9971860427721498
+      }
+    },
+    {
+      "link_id": "24113101_f-24113101_f_2",
+      "need_score": 72.3697539797395,
+      "components": {
+        "safety": 0.943962051776813,
+        "pavement": 0.0,
+        "congestion": 0.9963820549927641
+      }
+    }
+  ],
+  "sources": [
+    {
+      "name": "Traffic Crashes - Crashes",
+      "dataset_id": "85ca-t3if",
+      "url": "https://data.cityofchicago.org/resource/85ca-t3if.json"
+    },
+    {
+      "name": "311 Service Requests - Pot Holes Reported",
+      "dataset_id": "7as2-ds3y",
+      "url": "https://data.cityofchicago.org/resource/7as2-ds3y.json"
+    },
+    {
+      "name": "Average Daily Traffic Counts",
+      "dataset_id": "gc7y-n4xa",
+      "url": "https://data.cityofchicago.org/resource/gc7y-n4xa.json"
+    }
+  ]
+}

@@ -246,6 +246,26 @@ const AREA_ORDER = ROOT_DATA.area_order || Object.keys(AREAS);
 let areaSlug = localStorage.getItem('citysim_needs_area') || ROOT_DATA.default_area || AREA_ORDER[0];
 if(!AREAS[areaSlug]) areaSlug = AREA_ORDER[0];
 let DATA = AREAS[areaSlug];
+const featureRequests = new Map();
+async function ensureFeatures(slug){
+  const area = AREAS[slug];
+  if(area.features !== undefined) return;
+  if(!featureRequests.has(slug)){
+    featureRequests.set(slug, (async()=>{
+      try{
+        const response = await fetch(area.data_url);
+        if(!response.ok) throw new Error('HTTP '+response.status);
+        const payload = await response.json();
+        area.features = payload.features || [];
+      }catch(error){
+        console.warn('Could not load needs data for '+slug, error);
+        area.features = [];
+      }
+    })());
+  }
+  await featureRequests.get(slug);
+}
+let areaSelection = 0;
 const BOUNDARIES = ROOT_DATA.boundaries || [];
 const BOUNDS = ROOT_DATA.bounds || null;
 let curZoom = 11;
@@ -270,7 +290,7 @@ function baseLayer(){
     renderSubLayers:props=>new BitmapLayer(props,{data:null,image:props.data,bounds:[props.tile.boundingBox[0][0],props.tile.boundingBox[0][1],props.tile.boundingBox[1][0],props.tile.boundingBox[1][1]]})});
 }
 function needsLayer(){
-  return new PathLayer({id:'needs',data:DATA.features,pickable:true,autoHighlight:true,highlightColor:[120,220,255,255],
+  return new PathLayer({id:'needs',data:DATA.features || [],pickable:true,autoHighlight:true,highlightColor:[120,220,255,255],
     getPath:d=>d.path,getColor:d=>scoreColor(d.score),getWidth:d=>1.2+2.8*(d.score/100),
     widthUnits:'pixels',widthMinPixels:1.4,widthMaxPixels:6,rounded:true,
     onClick:info=>{if(info.object)clickStreet(info.object);}});
@@ -316,7 +336,12 @@ if(BOUNDARIES.length>1 && BOUNDS){
   }catch(e){}
 }
 function render(){deckgl.setProps({layers:mapLayers()});}
-function selectArea(nextSlug){
+async function selectArea(nextSlug){
+  const selection = ++areaSelection;
+  if(ROOT_DATA.areas){
+    await ensureFeatures(nextSlug);
+    if(selection !== areaSelection) return;
+  }
   areaSlug = nextSlug;
   DATA = AREAS[areaSlug];
   localStorage.setItem('citysim_needs_area', areaSlug);
@@ -334,6 +359,7 @@ function selectArea(nextSlug){
 function bar(v){return '<div class="bar"><span style="width:'+Math.round(v*100)+'%"></span></div>';}
 function clickStreet(d){
   const p=document.getElementById('popup');
+  if(!d || !DATA.features || !DATA.features.length || !DATA.total){p.style.display='none';return;}
   if(d.score < DATA.popupMinScore){p.style.display='none';return;}
   const pct=Math.round(100*d.rank/DATA.total);
   p.innerHTML='<h3>'+d.name+'</h3>'+
@@ -373,6 +399,7 @@ document.title='CitySim - Where do '+DATA.area_name+' streets need attention?';
 document.getElementById('areaName').textContent=DATA.area_name;
 renderSources();
 btn.onclick=()=>panel.classList.toggle('open');
+if(ROOT_DATA.areas) ensureFeatures(areaSlug).then(() => render());
 </script>
 </body>
 </html>

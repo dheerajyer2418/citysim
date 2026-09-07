@@ -260,6 +260,21 @@ def main() -> None:
                 if boundary.contains(Point(*road["path"][len(road["path"]) // 2]))
             ]
 
+    needs_metadata = {}
+    for area, payload in needs_areas.items():
+        dashed_slug = _area_public_slug(area)
+        (PUBLIC / dashed_slug / "data" / "needs_payload.json").write_text(
+            json.dumps(payload, separators=(",", ":")), encoding="utf-8"
+        )
+        needs_metadata[area] = {
+            key: payload[key]
+            for key in (
+                "area_name", "area_slug", "center", "total", "popupMinScore",
+                "weights", "coverage", "sources",
+            )
+        }
+        needs_metadata[area]["data_url"] = f"{dashed_slug}/data/needs_payload.json"
+
     def boundary_entries(order):
         """Ordered neighborhood outlines + label points for the on-map selector."""
         entries = []
@@ -292,7 +307,7 @@ def main() -> None:
 
     default_needs = default_area if default_area in needs_order else needs_order[0]
     unified_needs = {
-        "areas": needs_areas,
+        "areas": needs_metadata,
         "area_order": needs_order,
         "default_area": default_needs,
         "boundaries": needs_boundaries,
