@@ -4,7 +4,9 @@ Context for AI assistants and humans working on this repo. Read this first.
 
 ## What This Is
 
-CitySim is a civic decision-support tool: an agent-based traffic simulation and local scenario builder for Logan Square, Chicago. It lets users test infrastructure interventions such as pothole repair, bike lanes, road diets, traffic-flow improvements, and user-drawn corridor edits, then inspect before/after traffic outcomes, model-health diagnostics, and benefit-cost outputs.
+CitySim is a civic decision-support tool: an agent-based traffic simulation and local scenario builder for Chicago. It lets users test infrastructure interventions such as pothole repair, bike lanes, road diets, traffic-flow improvements, and user-drawn corridor edits, then inspect before/after traffic outcomes, model-health diagnostics, and benefit-cost outputs.
+
+The pipeline is area-aware: `cli.py --area <slug>` runs any stage for any configured Chicago community area. The **street-attention needs index (`s7`) is now built for all 77 community areas** (see "Chicago-wide Needs Map" below); the MATSim traffic simulations and BCA are validated for Logan Square (the original area) and are extended to other areas incrementally. Logan Square remains the reference area for tuning.
 
 The traffic engine is MATSim. The data comes from CMAP, OpenStreetMap, Census LODES/TIGERweb, Chicago Open Data, and CTA GTFS. The project also includes a FastAPI/deck.gl scenario-builder UI and a deck.gl live web visualization. Transit now runs in a separate auto+pt config lineage.
 
@@ -34,9 +36,21 @@ Run stages with `.\.venv\Scripts\python.exe cli.py run --stage <stage>`.
 | s4 | `pipeline/s4_calibrate.py` | Validation against Chicago traffic counts |
 | s5 | `pipeline/s5_interventions.py` | Pothole and bike-lane scenario network generation |
 | s6 | `pipeline/s6_monetize.py` | Pothole and bike-lane BCA plus scenario-comparison exports |
+| s7 | `pipeline/s7_needs_index.py` | Needs-priority index: per-link 0-100 score from crash (safety), 311 pothole (pavement), and ADT (congestion) data. No MATSim; fetch + snap + score. Writes `needs_index.{csv,geojson}` + `_summary.json` |
 | diag | `pipeline/sim_diagnostics.py` | MATSim completion/stuck diagnostics and top stuck links |
 | viz | `viz/build_live_viz.py` | Self-contained deck.gl animated web visualization |
 | serve | `pipeline/scenario_server.py` | Local draw-any-street-change scenario builder and single-worker run queue |
+
+## Chicago-wide Needs Map
+
+The needs index (`s7`) is built for **all 77 Chicago community areas**. Areas are configured in `params.yaml` under `areas:` (all 77 present; slug/name/`community_area_id` derived from Socrata dataset `igwz-8jzy`). Two helper scripts support this:
+
+- `scripts/gen_area_configs.py` — one-time generator that fetches all 77 areas and emits the `areas:` config block (with a self-check that the 10 originally-configured slug/id pairs match before writing). Writes `data/interim/areas_generated.yaml` for review; does not edit `params.yaml`.
+- `scripts/build_area_needs.py` — cheap, no-simulation batch driver. Runs `s0 -> s1 -> s7` per area (the needs path needs no `core`/crosswalk, demand, or MATSim), with per-step retry and skip-existing. `--areas a,b,c` for a batch, or omit `--areas` to run every configured area. Use this to (re)build the needs map at scale.
+
+Gotchas learned building this:
+- `s7`'s Socrata read timeout is `(30, 240)` seconds in `_fetch_and_cache`. Dense areas (Near West Side ~9k crashes, the Loop) exceed a 60s read timeout and fail all retries identically; 240s fixes it.
+- The unified site maps **lazy-load** per-area data. `viz/build_site.py` writes each area's segment payload to `public/<slug>/data/needs_payload.json` and the root `public/needs_map.html` fetches it on neighborhood selection instead of inlining all 77 areas. Inlining produced a 228 MB HTML (over GitHub's 100 MB limit and a 228 MB page load); lazy-loading keeps the root at ~1 MB. NOTE: `public/live_traffic.html` still inlines its (10) sim areas (~55 MB) and needs the same treatment before many more areas get MATSim sims.
 
 ## Toolchain
 
