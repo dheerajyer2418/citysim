@@ -5,7 +5,10 @@ environment.yml
 pipeline/
 matsim/
 scenarios/
-data/
+# Anchor to root only: bare "data/" also matched public/<area>/data/, which
+# excluded the lazy-loaded needs_payload.json / live_payload.json from the
+# deploy (404 -> maps showed no streets). Only ignore the top-level data/.
+/data/
 tests/
 viz/
 cli.py
