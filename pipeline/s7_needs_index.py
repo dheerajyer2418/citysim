@@ -182,10 +182,10 @@ def run(cfg) -> None:
         sev = rec.get('most_severe_injury', '').upper().strip()
         if 'FATAL' in sev:
             w = sev_weights.get('fatal', 5.0)
-        elif 'INCAPACITATING' in sev:
-            w = sev_weights.get('incapacitating', 4.0)
         elif 'NONINCAPACITATING' in sev or 'REPORTED' in sev:
             w = sev_weights.get('non_incapacitating', 2.0)
+        elif 'INCAPACITATING' in sev:
+            w = sev_weights.get('incapacitating', 4.0)
         else:
             w = sev_weights.get('other', 1.0)
         x, y = transformer_in.transform(lon, lat)

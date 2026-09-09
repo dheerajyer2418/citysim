@@ -180,17 +180,22 @@ HTML = """<!DOCTYPE html>
 <meta charset="utf-8"/>
 <title>CitySim - Where do Logan Square streets need attention?</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://unpkg.com/deck.gl@9.0.0/dist.min.js"></script>
 <style>
-  html,body,#map{margin:0;width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#e7f1ff;}
-  #banner{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:10px;padding:12px 22px;text-align:center;backdrop-filter:blur(4px);}
-  #banner b{font-size:20px;display:block;}
+  html,body,#map{margin:0;width:100%;height:100%;background:#0a0e14;overflow:hidden;font-family:'Inter',system-ui,Segoe UI,Roboto,sans-serif;color:#e7f1ff;-webkit-font-smoothing:antialiased;}
+  #banner{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(10,20,32,.82);border:1px solid rgba(116,215,255,.4);border-radius:10px;padding:12px 22px;text-align:center;backdrop-filter:blur(6px);box-shadow:0 10px 30px rgba(0,0,0,.42);}
+  #banner b{font-size:20px;display:block;font-weight:700;letter-spacing:-.01em;}
   #banner span{font-size:12.5px;color:#9fb7cc;}
   #areaName{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:7;background:rgba(6,14,22,.74);border:1px solid rgba(116,215,255,.42);border-radius:8px;padding:7px 14px;color:#fff;font-size:18px;font-weight:700;letter-spacing:0;text-shadow:0 1px 8px rgba(0,0,0,.75);pointer-events:none;}
-  #hud{position:absolute;top:14px;left:16px;z-index:5;max-width:300px;background:rgba(10,20,32,.72);border:1px solid rgba(90,160,255,.25);border-radius:9px;padding:12px 14px;backdrop-filter:blur(4px);}
-  #hud p{font-size:12px;line-height:1.4;color:#c6d9ec;margin:4px 0;}
-  #ramp{height:12px;border-radius:6px;background:linear-gradient(90deg,rgb(40,190,120),rgb(245,220,80),rgb(235,80,55));margin-top:8px;}
-  #legendrow{display:flex;justify-content:space-between;font-size:10px;color:#9fb7cc;margin-top:3px;text-transform:uppercase;}
+  #hud{position:absolute;top:14px;left:16px;z-index:5;max-width:300px;background:rgba(10,20,32,.72);border:1px solid rgba(90,160,255,.25);border-radius:9px;padding:13px 15px;backdrop-filter:blur(6px);box-shadow:0 8px 24px rgba(0,0,0,.36);}
+  #hud p{font-size:12px;line-height:1.45;color:#c6d9ec;margin:4px 0;}
+  #hist{display:flex;align-items:flex-end;gap:1px;height:26px;margin-top:10px;}
+  #hist i{flex:1 1 0;min-width:0;border-radius:1.5px 1.5px 0 0;opacity:.92;transition:height .35s ease;}
+  #ramp{height:10px;border-radius:5px;background:linear-gradient(90deg,#3a4654,#7f9a5a,#e6c34d,#e07a3c,#e5442f);margin-top:3px;}
+  #legendrow{display:flex;justify-content:space-between;font-size:10px;color:#9fb7cc;margin-top:3px;text-transform:uppercase;letter-spacing:.03em;}
   #views{position:absolute;bottom:16px;left:16px;z-index:6;display:flex;gap:6px;}
   #views button{background:rgba(10,20,32,.8);color:#dff;border:1px solid #3c6f8c;border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;}
   #views button:hover{border-color:#74d7ff;}
@@ -225,6 +230,7 @@ HTML = """<!DOCTYPE html>
 <div id="hud">
   <p style="font-size:13px;color:#e7f1ff;">Streets scored 0-100 from public crash, pothole, and traffic data.</p>
   <p style="color:#9fb7cc;font-size:11px;">A planning signal, not ground truth.</p>
+  <div id="hist" title="How many streets fall at each score"></div>
   <div id="ramp"></div><div id="legendrow"><span>lower need</span><span>higher need</span></div>
 </div>
 <div id="areaWrap">Neighborhood <select id="areaButtons" aria-label="Neighborhood"></select></div>
@@ -279,22 +285,31 @@ const BASEMAPS = {
   satellite:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 };
 let currentBase='dark';
-function scoreColor(s){
-  const t=Math.max(0,Math.min(1,s/100));
-  let r,g,b;
-  if(t<0.5){const u=t/0.5; r=Math.round(40+205*u); g=Math.round(190+30*u); b=Math.round(120-40*u);}
-  else{const u=(t-0.5)/0.5; r=Math.round(245-10*u); g=Math.round(220-140*u); b=Math.round(80-25*u);}
-  return [r,g,b,150+Math.round(t*90)];
-}
+// Refined traffic-light ramp: muted gray-blue (low need) -> yellow -> red (high).
+// Low-need streets get low alpha + thin width so hotspots dominate the map.
+const RAMP=[[0.0,[58,70,84]],[0.25,[127,154,90]],[0.5,[230,195,77]],[0.75,[224,122,60]],[1.0,[229,68,47]]];
+function lerp(a,b,u){return [Math.round(a[0]+(b[0]-a[0])*u),Math.round(a[1]+(b[1]-a[1])*u),Math.round(a[2]+(b[2]-a[2])*u)];}
+function rampColor(t){t=Math.max(0,Math.min(1,t));for(let i=0;i<RAMP.length-1;i++){if(t<=RAMP[i+1][0]){const u=(t-RAMP[i][0])/(RAMP[i+1][0]-RAMP[i][0]);return lerp(RAMP[i][1],RAMP[i+1][1],u);}}return RAMP[RAMP.length-1][1];}
+function scoreColor(s){const t=Math.max(0,Math.min(1,s/100));const c=rampColor(t);const a=Math.round(48+207*Math.pow(t,1.15));return [c[0],c[1],c[2],a];}
 function baseLayer(){
   return new TileLayer({id:'base-'+currentBase,data:BASEMAPS[currentBase],minZoom:0,maxZoom:19,tileSize:256,
     renderSubLayers:props=>new BitmapLayer(props,{data:null,image:props.data,bounds:[props.tile.boundingBox[0][0],props.tile.boundingBox[0][1],props.tile.boundingBox[1][0],props.tile.boundingBox[1][1]]})});
 }
 function needsLayer(){
   return new PathLayer({id:'needs',data:DATA.features || [],pickable:true,autoHighlight:true,highlightColor:[120,220,255,255],
-    getPath:d=>d.path,getColor:d=>scoreColor(d.score),getWidth:d=>1.2+2.8*(d.score/100),
-    widthUnits:'pixels',widthMinPixels:1.4,widthMaxPixels:6,rounded:true,
+    getPath:d=>d.path,getColor:d=>scoreColor(d.score),getWidth:d=>0.6+4.6*Math.pow(d.score/100,1.2),
+    widthUnits:'pixels',widthMinPixels:0.6,widthMaxPixels:7,rounded:true,
     onClick:info=>{if(info.object)clickStreet(info.object);}});
+}
+// Soft wide halo under the top ~5% of streets so hotspot clusters read at overview zoom.
+function glowLayer(){
+  const feats=DATA.features||[]; const total=DATA.total||feats.length;
+  const cut=Math.max(1,Math.round(total*0.05));
+  const hot=feats.filter(d=>d.rank?d.rank<=cut:d.score>=70);
+  return new PathLayer({id:'needs-glow',data:hot,pickable:false,getPath:d=>d.path,
+    getColor:d=>{const c=rampColor(d.score/100);return [c[0],c[1],c[2],34];},
+    getWidth:d=>7+13*(d.score/100),widthUnits:'pixels',widthMinPixels:6,widthMaxPixels:24,rounded:true,
+    parameters:{depthTest:false}});
 }
 function boundaryFill(op){
   return new deck.PolygonLayer({id:'nbhd-fill',data:BOUNDARIES,pickable:true,opacity:op,
@@ -322,7 +337,7 @@ function boundaryLabels(op){
 }
 function nbhdFill(){const op=overlayOpacity();return op<0.04?[]:[boundaryFill(op)];}
 function nbhdLabels(){const op=overlayOpacity();return op<0.04?[]:[boundaryLabels(op)];}
-function mapLayers(){return [baseLayer(), ...nbhdFill(), needsLayer(), ...nbhdLabels()];}
+function mapLayers(){return [baseLayer(), ...nbhdFill(), glowLayer(), needsLayer(), ...nbhdLabels()];}
 const deckgl=new DeckGL({container:'map',
   initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0},
   controller:true,layers:mapLayers(),
@@ -346,6 +361,7 @@ async function selectArea(nextSlug){
   deckgl.setProps({initialViewState:{longitude:DATA.center[0],latitude:DATA.center[1],zoom:13.2,pitch:0,bearing:0,transitionInterpolator:new deck.FlyToInterpolator({speed:1.8}),transitionDuration:'auto'}});
   render();
   renderSources();
+  updateLegend();
   const hint=document.getElementById('nbhdHint'); if(hint) hint.style.display='none';
   const bn=document.getElementById('banner'); if(bn) bn.style.display='';
   const an=document.getElementById('areaName'); if(an) an.style.display='';
@@ -385,11 +401,20 @@ html+='<div class="note">Weights &mdash; safety '+((w.safety||0)*100).toFixed(0)
 html+='<div class="note">Coverage &mdash; safety '+((c.safety||0)*100).toFixed(0)+'%, pavement '+((c.pavement||0)*100).toFixed(0)+'%, congestion '+((c.congestion||0)*100).toFixed(0)+'%. Pavement and traffic-count coverage is sparse, so the score is currently safety-weighted.</div>';
 panel.innerHTML=html;
 }
+// Mini score distribution under the ramp: sqrt-scaled bars, colored by score position.
+function updateLegend(){
+  const el=document.getElementById('hist'); if(!el) return;
+  const feats=DATA.features||[]; const bins=28; const counts=new Array(bins).fill(0);
+  feats.forEach(d=>{let b=Math.floor((d.score/100)*bins);if(b<0)b=0;if(b>bins-1)b=bins-1;counts[b]++;});
+  const mx=Math.max(1,...counts.map(c=>Math.sqrt(c)));
+  el.innerHTML=counts.map((c,i)=>{const h=c?Math.max(8,Math.round(100*Math.sqrt(c)/mx)):2;const col=rampColor((i+0.5)/bins);return '<i style="height:'+h+'%;background:rgb('+col[0]+','+col[1]+','+col[2]+')"></i>';}).join('');
+}
 document.title='CitySim - Where do '+DATA.area_name+' streets need attention?';
 document.getElementById('areaName').textContent=DATA.area_name;
 renderSources();
+updateLegend();
 btn.onclick=()=>panel.classList.toggle('open');
-if(ROOT_DATA.areas) ensureFeatures(areaSlug).then(() => render());
+if(ROOT_DATA.areas) ensureFeatures(areaSlug).then(() => {render();updateLegend();});
 </script>
 </body>
 </html>
