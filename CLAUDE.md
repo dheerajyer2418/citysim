@@ -66,10 +66,10 @@ INTENDED (`pipeline/s7_needs_index.py`): for each network link, snap three publi
 
 VERIFIED ACCURATE: display fidelity is exact — served `public/<slug>/data/needs_payload.json` scores and raw crash/pothole/ADT values match the computed `data/processed/<slug>/needs_index.csv` with 0 mismatches. All 77 areas built; weights identical everywhere; ADT correctly mean-aggregated; percentile normalization collapses the many zero-value links to 0 correctly.
 
-KNOWN ACCURACY ISSUES (not yet fixed — decide before trusting the numbers):
-1. **BUG: crash severity misclassification.** In `s7_needs_index.py` the `elif 'INCAPACITATING' in sev` branch matches `"NONINCAPACITATING INJURY"` (substring), so ~**8.9%** of crashes (nonincapacitating) are weighted 4.0 instead of 2.0, skewing the safety layer in all 77 areas. FIX = exact/ordered matching (check `NONINCAPACITATING`/`REPORTED` before `INCAPACITATING`), then **re-run `s7` for all 77** (`scripts/build_area_needs.py`) and rebuild the site (`viz/build_site.py`).
-2. **Coverage far thinner than the 3-factor framing implies.** Across 77 areas pavement has data on ~1% of links (median 0.010) and congestion ~0.5% (median 0.0053). So for ~99% of streets pavement+congestion contribute 0 and the score is effectively `safety x 0.45` (capped ~45); e.g. West Town has ~62% of streets scoring exactly 0. Disclosed in the map's Sources note as "safety-weighted," but the 25%/30% weights overstate what the data supports. DECISION NEEDED: reweight to real coverage, restrict pavement/congestion to areas with data, or relabel the map as crash-driven.
-3. **Minor: popup "rank #X of N" denominator** uses the full buffered network (e.g. 23,000 for West Town) while only the ~6,449 in-boundary streets are shown on the unified map (features are boundary-clipped in `build_site.py`, but rank/total come from the pre-clip per-area payload).
+ACCURACY ISSUES:
+1. **FIXED (2026-09-09): crash severity misclassification.** In `s7_needs_index.py` the `elif 'INCAPACITATING' in sev` branch matched `"NONINCAPACITATING INJURY"` (substring), so ~**8.6%** of crashes (nonincapacitating) were weighted 4.0 instead of 2.0, skewing the safety layer in all 77 areas. Resolved by reordering so `NONINCAPACITATING`/`REPORTED` (2.0) is checked **before** `INCAPACITATING` (4.0). Re-ran `s7` for all 77 areas and rebuilt the site; verified served payloads match the corrected scores (0 mismatches, sparse areas' `max_score` dropped ~100->~75 as expected). Committed in `c0a6b5d`.
+2. **NOT YET FIXED — Coverage far thinner than the 3-factor framing implies.** Across 77 areas pavement has data on ~1% of links (median 0.010) and congestion ~0.5% (median 0.0053). So for ~99% of streets pavement+congestion contribute 0 and the score is effectively `safety x 0.45` (capped ~45); e.g. West Town has ~62% of streets scoring exactly 0. Disclosed in the map's Sources note as "safety-weighted," but the 25%/30% weights overstate what the data supports. DECISION NEEDED: reweight to real coverage, restrict pavement/congestion to areas with data, or relabel the map as crash-driven.
+3. **NOT YET FIXED — Minor: popup "rank #X of N" denominator** uses the full buffered network (e.g. 23,000 for West Town) while only the ~6,449 in-boundary streets are shown on the unified map (features are boundary-clipped in `build_site.py`, but rank/total come from the pre-clip per-area payload).
 
 NOTE: BCA / traffic-simulation numbers (live map, pothole/bike-lane) are a SEPARATE, larger data path and were NOT covered by this audit — see "Current Intervention Details" and "Known Limitations".
 
@@ -224,10 +224,10 @@ REMAINING / NEW NEXT STEPS:
 7. Investigate the bike-lane car-network disbenefit — re-examine `s5` capacity/freespeed reduction and rerouting; only then is the bike-lane BCA meaningful.
 8. Transit follow-ups: confirm CMAP transit mode codes `[4,5,6]` against c24q4 TBM source; calibrate ridership/transfer behavior (transfer penalties / SwissRailRaptor); model a transit BCA; optionally enable Metra/Pace, add deck.gl transit overlay, add typed `TransitConfig`.
 9. Replace remaining sketch coefficients (bike-lane demand/health shares, pothole repair cost) with policy-grade Chicago evidence (FOIA/bid tabs, local counts, crash history).
-10. **Needs-index accuracy fixes (from the 2026-09-07 audit — see "Needs Index: how it works vs. accuracy audit" above).** Pending user decision on each:
-    - a) Fix the crash-severity substring bug in `s7_needs_index.py` (nonincapacitating mis-weighted 4.0 -> should be 2.0), then re-run `s7` for all 77 (`scripts/build_area_needs.py`) + rebuild site.
-    - b) Decide honest score framing given pavement ~1% / congestion ~0.5% coverage (reweight, restrict layers to covered areas, or relabel as crash-driven).
-    - c) Optional: fix the popup "rank of N" denominator to count only in-boundary streets shown.
+10. **Needs-index accuracy fixes (from the 2026-09-07 audit — see "Needs Index: how it works vs. accuracy audit" above).**
+    - a) DONE (2026-09-09): fixed the crash-severity substring bug in `s7_needs_index.py` (nonincapacitating now weighted 2.0, not 4.0); re-ran `s7` for all 77 and rebuilt the site (commit `c0a6b5d`).
+    - b) NOT YET FIXED: decide honest score framing given pavement ~1% / congestion ~0.5% coverage (reweight, restrict layers to covered areas, or relabel as crash-driven).
+    - c) NOT YET FIXED (optional): fix the popup "rank of N" denominator to count only in-boundary streets shown.
     - NOTE: an accuracy audit of the BCA / traffic-simulation numbers has NOT been done and is a separate task.
 
 ## Model-Health Tuning Result
